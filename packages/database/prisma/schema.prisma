@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique @db.VarChar(120)
+  slug      String    @unique @db.VarChar(160)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+model Product {
+  id            Int              @id @default(autoincrement())
+  code          String           @unique @db.VarChar(64)
+  name          String           @db.VarChar(160)
+  slug          String           @unique @db.VarChar(200)
+  description   String?          @db.Text
+  price         Int
+  discountPrice Int?
+  isActive      Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  categoryId    Int
+  category      Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  images        ProductImage[]
+  variants      ProductVariant[]
+  channelPosts  ChannelPost[]
+
+  @@index([categoryId, isActive])
+  @@index([isActive, createdAt])
+}
+
+model ProductImage {
+  id        Int     @id @default(autoincrement())
+  url       String  @db.Text
+  sortOrder Int     @default(0)
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, sortOrder])
+}
+
+model ProductVariant {
+  id         Int         @id @default(autoincrement())
+  size       String      @db.VarChar(50)
+  color      String      @db.VarChar(80)
+  stock      Int         @default(0)
+  productId  Int
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@unique([productId, size, color])
+}
+
+model ChannelPost {
+  id                Int      @id @default(autoincrement())
+  telegramMessageId Int
+  telegramChannelId BigInt
+  productId         Int
+  createdAt         DateTime @default(now())
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([telegramChannelId, telegramMessageId])
+  @@index([productId])
+  @@index([createdAt])
+}
+
+model Customer {
+  id             Int      @id @default(autoincrement())
+  telegramUserId BigInt   @unique
+  username       String?  @db.VarChar(32)
+  firstName      String   @db.VarChar(120)
+  phone          String?  @db.VarChar(32)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  orders         Order[]
+
+  @@index([username])
+}
+
+model Order {
+  id          Int         @id @default(autoincrement())
+  status      OrderStatus @default(PENDING)
+  totalAmount Int
+  customerId  Int
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  customer    Customer    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  items       OrderItem[]
+
+  @@index([customerId, createdAt])
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id               Int            @id @default(autoincrement())
+  quantity         Int
+  unitPrice        Int
+  orderId          Int
+  productVariantId Int
+  order            Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
+
+  @@unique([orderId, productVariantId])
+  @@index([productVariantId])
+}

@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build artifacts
+dist/
+coverage/
+*.tsbuildinfo
+
+# Generated Prisma Client
+packages/database/src/generated/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+pnpm-debug.log*
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
