@@ -1,0 +1,9 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "..",
+    "tsBuildInfoFile": "../dist/.tsbuildinfo.seed"
+  },
+  "include": ["seed.ts", "../src/**/*.ts"]
+}

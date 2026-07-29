@@ -89,6 +89,7 @@ Prisma komandalar:
 ```bash
 pnpm db:migrate
 pnpm db:deploy
+pnpm db:seed
 pnpm db:studio
 ```
 

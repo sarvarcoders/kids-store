@@ -18,6 +18,7 @@
     "db:generate": "pnpm --filter @kids-store/database db:generate",
     "db:migrate": "pnpm --filter @kids-store/database db:migrate",
     "db:deploy": "pnpm --filter @kids-store/database db:deploy",
+    "db:seed": "pnpm --filter @kids-store/database db:seed",
     "db:studio": "pnpm --filter @kids-store/database db:studio"
   },
   "devDependencies": {
