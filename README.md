@@ -44,8 +44,9 @@ pnpm install
 Copy-Item .env.example .env
 ```
 
-Keyin `.env` ichidagi `TELEGRAM_BOT_TOKEN`, `DATABASE_URL` va `DIRECT_URL` qiymatlarini
-kiriting.
+Keyin `.env` ichidagi `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`,
+`TELEGRAM_BOT_USERNAME`, `ADMIN_TELEGRAM_ID`, `DATABASE_URL` va `DIRECT_URL`
+qiymatlarini kiriting.
 
 Prisma Client’ni generatsiya qiling:
 
@@ -66,6 +67,12 @@ orqali ochish uchun quyidagi format ishlatiladi:
 
 ```text
 https://t.me/<bot_username>?start=product_<product_id>
+```
+
+Admin mahsulotni Telegram kanaliga chiqarishi uchun:
+
+```text
+/publish <product_id>
 ```
 
 Mahsulot variantini tanlash holati hozircha process memory’sida saqlanadi va

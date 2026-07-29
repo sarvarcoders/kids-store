@@ -1,0 +1,10 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "..",
+    "tsBuildInfoFile": "../dist/.tsbuildinfo.tests",
+    "types": ["node"]
+  },
+  "include": ["**/*.ts", "../src/services/channel-post.formatter.ts"]
+}

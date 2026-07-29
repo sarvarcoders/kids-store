@@ -14,6 +14,7 @@
     "dev": "pnpm --filter @kids-store/bot dev",
     "lint": "eslint .",
     "start": "pnpm --filter @kids-store/bot start",
+    "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck",
     "db:generate": "pnpm --filter @kids-store/database db:generate",
     "db:migrate": "pnpm --filter @kids-store/database db:migrate",
