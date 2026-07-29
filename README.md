@@ -75,8 +75,13 @@ Admin mahsulotni Telegram kanaliga chiqarishi uchun:
 /publish <product_id>
 ```
 
-Mahsulot variantini tanlash holati hozircha process memory’sida saqlanadi va
-bot qayta ishga tushganda tozalanadi.
+Mahsulot variantini tanlash va tugallanmagan buyurtma holati hozircha process
+memory’sida saqlanadi. Bot qayta ishga tushganda tugallanmagan checkout session
+yo‘qoladi; tasdiqlanib database’ga yozilgan buyurtmalar saqlanib qoladi.
+
+Buyurtma oqimi: o‘lcham va rang → miqdor → telefon → yetkazib berish manzili →
+yakuniy tasdiqlash. Telefonni Telegram contact tugmasi yoki matn orqali yuborish
+mumkin.
 
 Build va production rejimi:
 
@@ -89,6 +94,14 @@ TypeScript tekshiruvi:
 
 ```bash
 pnpm typecheck
+```
+
+Lint, test va to‘liq build:
+
+```bash
+pnpm lint
+pnpm test
+pnpm build
 ```
 
 Prisma komandalar:

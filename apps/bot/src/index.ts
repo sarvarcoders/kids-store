@@ -3,9 +3,11 @@ import { Bot, session } from "grammy";
 import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { registerCallbackHandlers } from "./handlers/callback.handler.js";
+import { registerOrderHandlers } from "./handlers/order.handler.js";
 import { registerPublishHandler } from "./handlers/publish.handler.js";
 import { registerStartHandler } from "./handlers/start.handler.js";
 import { ChannelPostService } from "./services/channel-post.service.js";
+import { OrderService } from "./services/order.service.js";
 import {
   createInitialSession,
   type BotContext,
@@ -22,6 +24,7 @@ bot.use(
 
 registerStartHandler(bot);
 registerPublishHandler(bot, new ChannelPostService(bot.api));
+registerOrderHandlers(bot, new OrderService());
 registerCallbackHandlers(bot);
 
 bot.catch((botError) => {

@@ -95,14 +95,16 @@ model Customer {
 }
 
 model Order {
-  id          Int         @id @default(autoincrement())
-  status      OrderStatus @default(PENDING)
-  totalAmount Int
-  customerId  Int
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  customer    Customer    @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  items       OrderItem[]
+  id              Int         @id @default(autoincrement())
+  status          OrderStatus @default(PENDING)
+  totalAmount     Int
+  deliveryAddress String?     @db.VarChar(500)
+  idempotencyKey  String?     @unique @db.VarChar(64)
+  customerId      Int
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  customer        Customer    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  items           OrderItem[]
 
   @@index([customerId, createdAt])
   @@index([status, createdAt])

@@ -14,6 +14,7 @@ export async function showProduct(
 
     if (!product) {
       ctx.session.productSelection = null;
+      ctx.session.orderDraft = null;
       await ctx.reply(
         "Afsuski, mahsulot topilmadi yoki hozir sotuvda mavjud emas.",
         {
@@ -26,6 +27,7 @@ export async function showProduct(
     ctx.session.productSelection = {
       productId: product.id,
     };
+    ctx.session.orderDraft = null;
 
     const caption = formatProductCaption(product);
     const keyboard = createSizeKeyboard(product);

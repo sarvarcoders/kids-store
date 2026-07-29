@@ -10,8 +10,8 @@ import {
 } from "../keyboards/main-menu.keyboard.js";
 import {
   createColorKeyboard,
-  createSelectionDoneKeyboard,
 } from "../keyboards/product-options.keyboard.js";
+import { createQuantityKeyboard } from "../keyboards/order.keyboard.js";
 import { findActiveProductById } from "../services/product.service.js";
 import { showCatalogHelp, showHelp, showMainMenu } from "./menu.handler.js";
 import { showProduct } from "./product.handler.js";
@@ -88,6 +88,7 @@ async function handleSizeSelection(
     productId: product.id,
     selectedSize: variant.size,
   };
+  ctx.session.orderDraft = null;
 
   await ctx.reply(
     `O‘lcham: ${variant.size}\nEndi rangni tanlang:`,
@@ -121,11 +122,27 @@ async function handleColorSelection(
     selectedColor: variant.color,
     productVariantId: variant.id,
   };
+  const unitPrice =
+    product.discountPrice !== null &&
+    product.discountPrice < product.price
+      ? product.discountPrice
+      : product.price;
+
+  ctx.session.orderDraft = {
+    productId: product.id,
+    productVariantId: variant.id,
+    productName: product.name,
+    selectedSize: variant.size,
+    selectedColor: variant.color,
+    unitPrice,
+    availableStock: variant.stock,
+    step: "selecting_quantity",
+  };
 
   await ctx.reply(
-    `✅ Variant tanlandi:\nO‘lcham: ${variant.size}\nRang: ${variant.color}\nOmborda: ${String(variant.stock)} dona`,
+    `✅ Variant tanlandi:\nO‘lcham: ${variant.size}\nRang: ${variant.color}\nOmborda: ${String(variant.stock)} dona\n\nMiqdorni tanlang:`,
     {
-      reply_markup: createSelectionDoneKeyboard(product.id),
+      reply_markup: createQuantityKeyboard(variant.id, variant.stock),
     },
   );
 }

@@ -7,7 +7,9 @@ const priceFormatter = new Intl.NumberFormat("uz-UZ");
 
 export function formatPrice(amountInput: unknown): string {
   const amount = moneyAmountSchema.parse(amountInput);
-  return `${priceFormatter.format(amount)} so‘m`;
+  const formattedAmount = priceFormatter.format(amount).replace(/\s/g, " ");
+
+  return `${formattedAmount} so‘m`;
 }
 
 export function formatProductCaption(product: ProductDetails): string {

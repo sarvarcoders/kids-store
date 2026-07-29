@@ -3,6 +3,7 @@ import { createMainMenuKeyboard } from "../keyboards/main-menu.keyboard.js";
 
 export async function showMainMenu(ctx: BotContext): Promise<void> {
   ctx.session.productSelection = null;
+  ctx.session.orderDraft = null;
 
   await ctx.reply(
     "Bolalar kiyimlari do‘koniga xush kelibsiz!\n\nKerakli bo‘limni tanlang:",
