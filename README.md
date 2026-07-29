@@ -44,7 +44,7 @@ pnpm install
 Copy-Item .env.example .env
 ```
 
-Keyin `.env` ichidagi `TELEGRAM_BOT_TOKEN` va `DATABASE_URL` qiymatlarini
+Keyin `.env` ichidagi `TELEGRAM_BOT_TOKEN`, `DATABASE_URL` va `DIRECT_URL` qiymatlarini
 kiriting.
 
 Prisma Client’ni generatsiya qiling:
