@@ -16,6 +16,7 @@
     "prisma"
   ],
   "scripts": {
+    "prebuild": "pnpm run db:generate",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p prisma/tsconfig.json --noEmit",
     "db:generate": "prisma generate",
