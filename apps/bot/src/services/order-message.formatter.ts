@@ -1,3 +1,4 @@
+import { formatOrderStatus } from "@kids-store/shared";
 import { z } from "zod";
 
 import { formatPrice } from "./product-presentation.service.js";
@@ -40,19 +41,7 @@ function singleLine(valueInput: unknown): string {
     .trim();
 }
 
-export function formatOrderStatus(statusInput: unknown): string {
-  const status = textSchema.parse(statusInput);
-  const labels: Readonly<Record<string, string>> = {
-    PENDING: "Kutilmoqda",
-    CONFIRMED: "Tasdiqlangan",
-    PROCESSING: "Tayyorlanmoqda",
-    SHIPPED: "Yetkazilmoqda",
-    DELIVERED: "Yetkazib berilgan",
-    CANCELLED: "Bekor qilingan",
-  };
-
-  return labels[status] ?? singleLine(status);
-}
+export { formatOrderStatus };
 
 export function formatOrderConfirmation(
   input: OrderConfirmationMessageInput,

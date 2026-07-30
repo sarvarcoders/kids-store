@@ -3,6 +3,7 @@ import Script from "next/script";
 import type { ReactNode } from "react";
 
 import { TelegramProvider } from "@/components/telegram/telegram-provider";
+import { MiniAppShell } from "@/components/layout/mini-app-shell";
 import { isMiniAppDevelopmentMockEnabled } from "@/lib/env/server";
 
 import "./globals.css";
@@ -41,7 +42,7 @@ export default function RootLayout({
         <TelegramProvider
           allowDevelopmentMock={isMiniAppDevelopmentMockEnabled()}
         >
-          {children}
+          <MiniAppShell>{children}</MiniAppShell>
         </TelegramProvider>
       </body>
     </html>

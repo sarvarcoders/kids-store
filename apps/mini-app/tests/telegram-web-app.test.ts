@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   initializeTelegramWebApp,
+  showTelegramMainButton,
   type TelegramInitializationResult,
 } from "../src/lib/telegram/web-app.js";
 
@@ -156,4 +157,81 @@ void test("oddiy browser Telegram WebViewdan alohida aniqlanadi", async () => {
   assert.equal(result.status, "browser");
   assert.equal(result.diagnostics.hasTelegramObject, true);
   assert.equal(result.diagnostics.hasInitData, false);
+});
+
+void test("MainButton state va cleanup wrapper orqali boshqariladi", () => {
+  const calls: string[] = [];
+  const mock = createMockTelegramWebApp({
+    initData: "auth_date=1&hash=test",
+    platform: "android",
+  });
+  const clickHandler = (): void => undefined;
+  mock.webApp.MainButton = {
+    disable() {
+      calls.push("disable");
+    },
+    enable() {
+      calls.push("enable");
+    },
+    hide() {
+      calls.push("hide");
+    },
+    hideProgress() {
+      calls.push("hideProgress");
+    },
+    offClick() {
+      calls.push("offClick");
+    },
+    onClick() {
+      calls.push("onClick");
+    },
+    setText() {
+      calls.push("setText");
+    },
+    show() {
+      calls.push("show");
+    },
+    showProgress() {
+      calls.push("showProgress");
+    },
+  };
+  const previousWindowDescriptor = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "window",
+  );
+
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      Telegram: {
+        WebApp: mock.webApp,
+      },
+    },
+  });
+
+  try {
+    const cleanup = showTelegramMainButton({
+      enabled: true,
+      loading: true,
+      onClick: clickHandler,
+      text: "Buyurtmani tasdiqlash",
+      visible: true,
+    });
+
+    assert.ok(calls.includes("enable"));
+    assert.ok(calls.includes("showProgress"));
+    assert.ok(calls.includes("show"));
+    cleanup();
+    assert.ok(calls.includes("hide"));
+  } finally {
+    if (previousWindowDescriptor) {
+      Object.defineProperty(
+        globalThis,
+        "window",
+        previousWindowDescriptor,
+      );
+    } else {
+      Reflect.deleteProperty(globalThis, "window");
+    }
+  }
 });

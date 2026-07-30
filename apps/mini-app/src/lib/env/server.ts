@@ -4,7 +4,9 @@ import { z } from "zod";
 
 const optionalUrlSchema = z.preprocess(
   (value) =>
-    typeof value === "string" && value.trim().length === 0 ? undefined : value,
+    typeof value === "string" && value.trim().length === 0
+      ? undefined
+      : value,
   z.url().optional(),
 );
 const botTokenSchema = z
@@ -14,6 +16,10 @@ const botTokenSchema = z
     (value) => value === value.trim(),
     "TELEGRAM_BOT_TOKEN boshida yoki oxirida whitespace bo‘lmasligi kerak",
   );
+const telegramIdSchema = z
+  .string()
+  .regex(/^[1-9]\d*$/)
+  .optional();
 
 const serverEnvSchema = z
   .object({
@@ -21,6 +27,7 @@ const serverEnvSchema = z
       .enum(["development", "test", "production"])
       .default("development"),
     TELEGRAM_BOT_TOKEN: botTokenSchema.optional(),
+    ADMIN_TELEGRAM_ID: telegramIdSchema,
     MINI_APP_DEV_MODE: z
       .enum(["true", "false"])
       .default("false")
@@ -40,6 +47,17 @@ const serverEnvSchema = z
         code: "custom",
         path: ["TELEGRAM_BOT_TOKEN"],
         message: "TELEGRAM_BOT_TOKEN server uchun kiritilishi shart",
+      });
+    }
+
+    if (
+      !developmentMockEnabled &&
+      value.ADMIN_TELEGRAM_ID === undefined
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["ADMIN_TELEGRAM_ID"],
+        message: "ADMIN_TELEGRAM_ID server uchun kiritilishi shart",
       });
     }
   });

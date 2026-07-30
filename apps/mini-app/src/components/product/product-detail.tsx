@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  cartResponseSchema,
   productDetailResponseSchema,
   type ProductDetailDto,
 } from "@kids-store/shared";
@@ -14,14 +15,26 @@ import {
   type ReactNode,
 } from "react";
 
+import { useCart } from "@/components/cart/cart-provider";
 import { useTelegram } from "@/components/telegram/telegram-provider";
 import {
   ErrorState,
   LoadingState,
 } from "@/components/ui/status-state";
-import { fetchMiniAppApi } from "@/lib/api/client";
+import {
+  fetchMiniAppApi,
+  requestMiniAppApi,
+} from "@/lib/api/client";
 import { formatUzbekPrice } from "@/lib/format/price";
-import { showTelegramBackButton } from "@/lib/telegram/web-app";
+import {
+  findSelectedProductVariant,
+  getAvailableColorsForSize,
+  getMaximumSelectableQuantity,
+} from "@/lib/catalog/product-selection";
+import {
+  notifyTelegramHaptic,
+  showTelegramBackButton,
+} from "@/lib/telegram/web-app";
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error
@@ -35,16 +48,24 @@ export function ProductDetail({
   productId: string;
 }): ReactNode {
   const router = useRouter();
+  const { cart, replaceCart } = useCart();
   const {
     initializationError,
     isReady,
     readInitData,
     retryInitialization,
   } = useTelegram();
-  const [product, setProduct] = useState<ProductDetailDto | null>(null);
+  const [product, setProduct] = useState<ProductDetailDto | null>(
+    null,
+  );
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedColor, setSelectedColor] = useState("");
+  const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState("");
+  const [cartMessage, setCartMessage] = useState("");
   const [retryVersion, setRetryVersion] = useState(0);
 
   useEffect(() => {
@@ -78,6 +99,10 @@ export function ProductDetail({
 
         setProduct(response.data);
         setActiveImageIndex(0);
+        setSelectedSize("");
+        setSelectedColor("");
+        setQuantity(1);
+        setCartMessage("");
       } catch (loadError) {
         if (!controller.signal.aborted) {
           setError(getErrorMessage(loadError));
@@ -96,7 +121,7 @@ export function ProductDetail({
     };
   }, [isReady, productId, readInitData, retryVersion]);
 
-  const uniqueSizes = useMemo(
+  const availableSizes = useMemo(
     () =>
       product
         ? Array.from(
@@ -105,15 +130,66 @@ export function ProductDetail({
         : [],
     [product],
   );
-  const uniqueColors = useMemo(
+  const availableColors = useMemo(
     () =>
-      product
-        ? Array.from(
-            new Set(product.variants.map((variant) => variant.color)),
-          )
+      product && selectedSize
+        ? getAvailableColorsForSize(product.variants, selectedSize)
         : [],
-    [product],
+    [product, selectedSize],
   );
+  const selectedVariant = useMemo(
+    () =>
+      product && selectedSize && selectedColor
+        ? findSelectedProductVariant(product.variants, {
+            size: selectedSize,
+            color: selectedColor,
+          })
+        : null,
+    [product, selectedColor, selectedSize],
+  );
+  const maximumQuantity = selectedVariant
+    ? getMaximumSelectableQuantity(selectedVariant.stock)
+    : 1;
+
+  async function handleAddToCart(): Promise<void> {
+    if (!selectedVariant || isAdding) {
+      return;
+    }
+
+    const wasAlreadyInCart =
+      cart?.items.some(
+        (item) => item.variantId === selectedVariant.id,
+      ) ?? false;
+    setIsAdding(true);
+    setCartMessage("");
+
+    try {
+      const response = await requestMiniAppApi(
+        "/api/cart/items",
+        readInitData,
+        cartResponseSchema,
+        {
+          method: "POST",
+          body: {
+            productVariantId: selectedVariant.id,
+            quantity,
+          },
+        },
+      );
+      replaceCart(response.data);
+      setCartMessage(
+        wasAlreadyInCart
+          ? "Savatchadagi variant miqdori yangilandi."
+          : "Mahsulot savatchaga qo‘shildi.",
+      );
+      notifyTelegramHaptic("success");
+    } catch (addError) {
+      setCartMessage(getErrorMessage(addError));
+      notifyTelegramHaptic("error");
+    } finally {
+      setIsAdding(false);
+    }
+  }
 
   if (initializationError) {
     return (
@@ -137,10 +213,7 @@ export function ProductDetail({
   if (error || !product) {
     return (
       <main className="mx-auto min-h-screen w-full max-w-3xl px-3 py-5 sm:px-5">
-        <Link
-          className="focus-ring mb-5 inline-flex rounded-full px-2 py-1 text-sm font-bold text-[var(--brand-purple)]"
-          href="/"
-        >
+        <Link className="focus-ring mb-5 inline-flex rounded-full px-2 py-1 text-sm font-bold" href="/catalog">
           ← Katalogga qaytish
         </Link>
         <ErrorState
@@ -162,16 +235,13 @@ export function ProductDetail({
     : product.price;
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-3xl px-3 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] sm:px-5">
-      <nav aria-label="Ortga qaytish" className="mb-4">
-        <Link
-          className="surface focus-ring inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-extrabold"
-          href="/"
-        >
-          <span aria-hidden="true">←</span>
-          Katalog
-        </Link>
-      </nav>
+    <main className="mx-auto min-h-screen w-full max-w-3xl px-3 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5">
+      <Link
+        className="surface focus-ring mb-4 inline-flex rounded-full px-4 py-2 text-sm font-extrabold"
+        href="/catalog"
+      >
+        ← Katalog
+      </Link>
 
       <article>
         <section aria-label="Mahsulot rasmlari">
@@ -190,11 +260,6 @@ export function ProductDetail({
                 👕
               </div>
             )}
-            {hasDiscount ? (
-              <span className="absolute left-4 top-4 rounded-full bg-[var(--brand-coral)] px-3 py-1.5 text-xs font-black uppercase tracking-wide text-white">
-                Chegirmada
-              </span>
-            ) : null}
           </div>
 
           {product.images.length > 1 ? (
@@ -225,22 +290,15 @@ export function ProductDetail({
         </section>
 
         <section className="surface mt-4 rounded-[2rem] px-5 py-6 sm:px-7">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[var(--brand-yellow)]/35 px-3 py-1 text-xs font-black text-slate-800">
-              {product.category.name}
-            </span>
-            <span className="text-muted text-xs font-bold">
-              Kod: {product.code}
-            </span>
-          </div>
-
-          <h1 className="mt-4 text-[1.8rem] font-black leading-tight tracking-[-0.04em]">
+          <p className="text-muted text-xs font-bold">
+            {product.category.name} · Kod: {product.code}
+          </p>
+          <h1 className="mt-3 text-[1.8rem] font-black leading-tight">
             {product.name}
           </h1>
-
           <div className="mt-4">
             {hasDiscount ? (
-              <p className="text-muted text-sm font-semibold line-through">
+              <p className="text-muted text-sm line-through">
                 {formatUzbekPrice(product.price)}
               </p>
             ) : null}
@@ -248,78 +306,118 @@ export function ProductDetail({
               {formatUzbekPrice(currentPrice)}
             </p>
           </div>
+          <p className="text-muted mt-5 text-sm leading-6">
+            {product.description ?? "Mahsulot tavsifi mavjud emas."}
+          </p>
 
-          <div className="mt-6">
-            <h2 className="text-sm font-black uppercase tracking-[0.12em]">
-              Tavsif
-            </h2>
-            <p className="text-muted mt-2 text-sm leading-6">
-              {product.description ?? "Mahsulot tavsifi mavjud emas."}
-            </p>
-          </div>
-
-          <div className="mt-6 grid gap-5 sm:grid-cols-2">
-            <div>
-              <h2 className="text-sm font-black uppercase tracking-[0.12em]">
-                O‘lchamlar
-              </h2>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {uniqueSizes.map((size) => (
-                  <span className="detail-chip" key={size}>
-                    {size}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h2 className="text-sm font-black uppercase tracking-[0.12em]">
-                Ranglar
-              </h2>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {uniqueColors.map((color) => (
-                  <span className="detail-chip" key={color}>
-                    {color}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-7">
-            <h2 className="text-sm font-black uppercase tracking-[0.12em]">
-              Mavjud variantlar
-            </h2>
-            <ul className="mt-3 grid gap-2" role="list">
-              {product.variants.map((variant) => (
-                <li
-                  className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--soft-panel)] px-4 py-3 text-sm"
-                  key={variant.id}
+          <fieldset className="mt-6">
+            <legend className="text-sm font-black uppercase tracking-[0.12em]">
+              O‘lcham
+            </legend>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {availableSizes.map((size) => (
+                <button
+                  aria-pressed={selectedSize === size}
+                  className="detail-chip focus-ring"
+                  data-active={selectedSize === size}
+                  key={size}
+                  onClick={() => {
+                    setSelectedSize(size);
+                    setSelectedColor("");
+                    setQuantity(1);
+                    setCartMessage("");
+                  }}
+                  type="button"
                 >
-                  <span className="font-extrabold">
-                    {variant.size} · {variant.color}
-                  </span>
-                  <span className="text-muted font-bold">
-                    {String(variant.stock)} dona
-                  </span>
-                </li>
+                  {size}
+                </button>
               ))}
-            </ul>
-          </div>
+            </div>
+          </fieldset>
+
+          <fieldset className="mt-5">
+            <legend className="text-sm font-black uppercase tracking-[0.12em]">
+              Rang
+            </legend>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {availableColors.length === 0 ? (
+                <span className="text-muted text-xs">
+                  Avval o‘lchamni tanlang.
+                </span>
+              ) : null}
+              {availableColors.map((color) => (
+                <button
+                  aria-pressed={selectedColor === color}
+                  className="detail-chip focus-ring"
+                  data-active={selectedColor === color}
+                  key={color}
+                  onClick={() => {
+                    setSelectedColor(color);
+                    setQuantity(1);
+                    setCartMessage("");
+                  }}
+                  type="button"
+                >
+                  {color}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
+          {selectedVariant ? (
+            <div className="mt-6 flex items-center justify-between gap-3 rounded-2xl bg-[var(--soft-panel)] p-4">
+              <span className="text-sm font-extrabold">
+                Mavjud: {String(selectedVariant.stock)} dona
+              </span>
+              <label
+                className="flex items-center gap-2 text-sm font-bold"
+                htmlFor="product-quantity"
+              >
+                Miqdor
+                <select
+                  className="focus-ring rounded-xl bg-white px-3 py-2 text-slate-900"
+                  id="product-quantity"
+                  onChange={(event) => {
+                    setQuantity(Number(event.target.value));
+                  }}
+                  value={quantity}
+                >
+                  {Array.from(
+                    { length: maximumQuantity },
+                    (_, index) => index + 1,
+                  ).map((value) => (
+                    <option key={value} value={value}>
+                      {String(value)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
 
           <button
-            aria-describedby="cart-coming-soon"
-            className="mt-7 w-full cursor-not-allowed rounded-[1.15rem] bg-slate-300 px-5 py-4 text-sm font-black text-slate-600 dark:bg-slate-700 dark:text-slate-300"
-            disabled
+            className="focus-ring mt-7 w-full rounded-[1.15rem] bg-[var(--brand-purple)] px-5 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!selectedVariant || isAdding}
+            onClick={() => {
+              void handleAddToCart();
+            }}
             type="button"
           >
-            🛍 Savatcha — keyingi bosqichda
+            {isAdding ? "Qo‘shilmoqda…" : "🛍 Savatchaga qo‘shish"}
           </button>
-          <p
-            className="text-muted mt-2 text-center text-xs"
-            id="cart-coming-soon"
-          >
-            Hozircha katalog faqat ko‘rish rejimida.
-          </p>
+          {!selectedVariant ? (
+            <p className="text-muted mt-2 text-center text-xs">
+              O‘lcham va rangni tanlang.
+            </p>
+          ) : null}
+          {cartMessage ? (
+            <p
+              className="mt-3 text-center text-sm font-bold"
+              role="status"
+            >
+              {cartMessage}
+            </p>
+          ) : null}
         </section>
       </article>
     </main>

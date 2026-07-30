@@ -229,3 +229,67 @@ export function showTelegramBackButton(
     }
   };
 }
+
+export function notifyTelegramHaptic(
+  type: "error" | "success" | "warning",
+): void {
+  try {
+    getTelegramWebApp()?.HapticFeedback?.notificationOccurred(type);
+  } catch {
+    // Eski Telegram klientida haptic mavjud bo‘lmasa UI davom etadi.
+  }
+}
+
+export function hasTelegramMainButton(): boolean {
+  return getTelegramWebApp()?.MainButton !== undefined;
+}
+
+export function showTelegramMainButton(options: {
+  enabled: boolean;
+  loading: boolean;
+  onClick: () => void;
+  text: string;
+  visible: boolean;
+}): () => void {
+  const mainButton = getTelegramWebApp()?.MainButton;
+
+  if (!mainButton) {
+    return () => undefined;
+  }
+
+  try {
+    mainButton.setText(options.text);
+    mainButton.offClick(options.onClick);
+    mainButton.onClick(options.onClick);
+
+    if (options.enabled) {
+      mainButton.enable();
+    } else {
+      mainButton.disable();
+    }
+
+    if (options.loading) {
+      mainButton.showProgress(true);
+    } else {
+      mainButton.hideProgress();
+    }
+
+    if (options.visible) {
+      mainButton.show();
+    } else {
+      mainButton.hide();
+    }
+  } catch {
+    return () => undefined;
+  }
+
+  return () => {
+    try {
+      mainButton.offClick(options.onClick);
+      mainButton.hideProgress();
+      mainButton.hide();
+    } catch {
+      // Telegram MainButton cleanup qo‘llanmasa xavfsiz tugatamiz.
+    }
+  };
+}
