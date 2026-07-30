@@ -7,6 +7,7 @@ Bolalar kiyimlari sotadigan Telegram do‘kon uchun boshlang‘ich monorepo.
 - Node.js va TypeScript
 - pnpm workspaces
 - grammY
+- Next.js App Router, React va Tailwind CSS
 - PostgreSQL
 - Prisma ORM
 - Zod
@@ -16,7 +17,8 @@ Bolalar kiyimlari sotadigan Telegram do‘kon uchun boshlang‘ich monorepo.
 ```text
 .
 ├── apps/
-│   └── bot/               # Telegram bot
+│   ├── bot/               # Telegram bot
+│   └── mini-app/          # Telegram Mini App katalogi
 ├── packages/
 │   ├── database/          # Prisma va PostgreSQL qatlami
 │   └── shared/            # Umumiy sxema va turlar
@@ -44,8 +46,9 @@ pnpm install
 Copy-Item .env.example .env
 ```
 
-Keyin `.env` ichidagi `TELEGRAM_BOT_TOKEN`, `DATABASE_URL` va `DIRECT_URL` qiymatlarini
-kiriting.
+Keyin `.env` ichidagi `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`,
+`TELEGRAM_BOT_USERNAME`, `ADMIN_TELEGRAM_ID`, `DATABASE_URL`, `DIRECT_URL`,
+`NEXT_PUBLIC_MINI_APP_URL` va `MINI_APP_DEV_MODE` qiymatlarini kiriting.
 
 Prisma Client’ni generatsiya qiling:
 
@@ -61,6 +64,8 @@ Development rejimida botni ishga tushirish:
 pnpm dev
 ```
 
+`pnpm dev` faqat Telegram botni ishga tushiradi.
+
 Bot `/start` komandasida bosh menyuni ko‘rsatadi. Mahsulotni Telegram deep link
 orqali ochish uchun quyidagi format ishlatiladi:
 
@@ -68,8 +73,67 @@ orqali ochish uchun quyidagi format ishlatiladi:
 https://t.me/<bot_username>?start=product_<product_id>
 ```
 
-Mahsulot variantini tanlash holati hozircha process memory’sida saqlanadi va
-bot qayta ishga tushganda tozalanadi.
+Admin mahsulotni Telegram kanaliga chiqarishi uchun:
+
+```text
+/publish <product_id>
+```
+
+Mahsulot variantini tanlash va tugallanmagan buyurtma holati hozircha process
+memory’sida saqlanadi. Bot qayta ishga tushganda tugallanmagan checkout session
+yo‘qoladi; tasdiqlanib database’ga yozilgan buyurtmalar saqlanib qoladi.
+
+Buyurtma oqimi: o‘lcham va rang → miqdor → telefon → yetkazib berish manzili →
+yakuniy tasdiqlash. Telefonni Telegram contact tugmasi yoki matn orqali yuborish
+mumkin.
+
+## Telegram Mini App
+
+Mini App hozircha xavfsiz Telegram autentifikatsiyasi va read-only mahsulot
+katalogini taqdim etadi. Savatcha va Mini App orqali buyurtma yaratish keyingi
+bosqichga qoldirilgan.
+
+Local browser preview uchun root `.env` ichida quyidagini explicit yoqing:
+
+```dotenv
+MINI_APP_DEV_MODE=true
+```
+
+Keyin Mini App’ni alohida ishga tushiring:
+
+```bash
+pnpm dev:mini-app
+```
+
+Local manzil odatda `http://localhost:3000`. Mock user faqat
+`NODE_ENV=development` va `MINI_APP_DEV_MODE=true` bo‘lganda ishlaydi.
+Production build va `next start` rejimida bu bypass yopiq.
+
+Real Telegram ichida sinash uchun:
+
+1. Mini App’ni HTTPS manzilga joylashtiring.
+2. Shu manzilni `.env` ichida `NEXT_PUBLIC_MINI_APP_URL` sifatida kiriting.
+3. BotFather orqali botning Mini App yoki menu button URL’ini shu HTTPS
+   manzilga sozlang.
+4. `MINI_APP_DEV_MODE=false` qiling.
+5. Mini App’ni Telegram ichidagi tugmadan oching.
+
+Frontend raw `Telegram.WebApp.initData`ni API’ga yuboradi. Server hash,
+`auth_date` va Telegram user JSON’ini tekshirgandan keyingina katalog
+endpointlariga ruxsat beradi. `initDataUnsafe` autentifikatsiya uchun
+ishlatilmaydi va bot tokeni client bundle’ga uzatilmaydi.
+
+Read-only endpointlar:
+
+```text
+GET /api/auth/me
+GET /api/categories
+GET /api/products
+GET /api/products/:id
+```
+
+Products endpoint `category`, `search`, `discountOnly`, `page` va `limit`
+query parametrlarini qo‘llaydi.
 
 Build va production rejimi:
 
@@ -78,10 +142,26 @@ pnpm build
 pnpm start
 ```
 
+Faqat Mini App production build:
+
+```bash
+pnpm build:mini-app
+```
+
 TypeScript tekshiruvi:
 
 ```bash
 pnpm typecheck
+pnpm typecheck:mini-app
+```
+
+Lint, test va to‘liq build:
+
+```bash
+pnpm lint
+pnpm lint:mini-app
+pnpm test
+pnpm build
 ```
 
 Prisma komandalar:
@@ -93,4 +173,4 @@ pnpm db:seed
 pnpm db:studio
 ```
 
-Hozircha Mini App, admin panel, AI va website mavjud emas.
+Hozircha Mini App savatchasi, admin panel, AI va public website mavjud emas.

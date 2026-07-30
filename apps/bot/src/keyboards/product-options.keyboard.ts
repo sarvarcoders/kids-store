@@ -70,12 +70,3 @@ export function createColorKeyboard(
     .row()
     .text("🏠 Bosh menyu", MENU_CALLBACKS.main);
 }
-
-export function createSelectionDoneKeyboard(
-  productId: number,
-): InlineKeyboard {
-  return new InlineKeyboard()
-    .text("🔄 Variantni almashtirish", `product:${String(productId)}`)
-    .row()
-    .text("🏠 Bosh menyu", MENU_CALLBACKS.main);
-}
