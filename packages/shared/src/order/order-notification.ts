@@ -116,3 +116,22 @@ export function formatAdminOrderNotification(
     ].join("\n"),
   );
 }
+
+export function formatCustomerOrderStatusUpdate(input: {
+  orderId: unknown;
+  status: unknown;
+}): string {
+  const parsed = z
+    .object({
+      orderId: z.number().int().positive(),
+      status: z.string().trim().min(1).max(50),
+    })
+    .parse(input);
+
+  return [
+    "📦 Buyurtma holati yangilandi.",
+    "",
+    `Buyurtma ID: ${String(parsed.orderId)}`,
+    `Yangi status: ${formatOrderStatus(parsed.status)}`,
+  ].join("\n");
+}

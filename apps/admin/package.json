@@ -1,0 +1,35 @@
+{
+  "name": "@kids-store/admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "pnpm --filter @kids-store/core build",
+    "dev": "next dev -p 3001",
+    "prebuild": "pnpm --filter @kids-store/core build",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "test": "tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@kids-store/core": "workspace:*",
+    "@kids-store/database": "workspace:*",
+    "@kids-store/shared": "workspace:*",
+    "next": "16.2.12",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "^24.13.3",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "postcss": "8.5.22",
+    "tailwindcss": "4.3.3",
+    "tsx": "^4.22.5",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
+  }
+}

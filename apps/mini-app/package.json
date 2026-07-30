@@ -4,17 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "pnpm --filter @kids-store/database build && pnpm --filter @kids-store/shared build",
+    "predev": "pnpm --filter @kids-store/core build",
     "dev": "next dev",
-    "prebuild": "pnpm --filter @kids-store/database build && pnpm --filter @kids-store/shared build",
+    "prebuild": "pnpm --filter @kids-store/core build",
     "build": "next build",
     "start": "next start",
-    "pretest": "pnpm --filter @kids-store/shared build",
     "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint ."
   },
   "dependencies": {
+    "@kids-store/core": "workspace:*",
     "@kids-store/database": "workspace:*",
     "@kids-store/shared": "workspace:*",
     "next": "16.2.12",
