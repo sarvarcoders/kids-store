@@ -21,9 +21,11 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "typecheck:mini-app": "pnpm --filter @kids-store/mini-app typecheck",
     "db:generate": "pnpm --filter @kids-store/database db:generate",
+    "db:validate": "pnpm --filter @kids-store/database db:validate",
     "db:migrate": "pnpm --filter @kids-store/database db:migrate",
     "db:deploy": "pnpm --filter @kids-store/database db:deploy",
     "db:seed": "pnpm --filter @kids-store/database db:seed",
+    "db:status": "pnpm --filter @kids-store/database db:status",
     "db:studio": "pnpm --filter @kids-store/database db:studio"
   },
   "devDependencies": {

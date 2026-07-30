@@ -1,4 +1,5 @@
 import {
+  calculateEffectivePrice,
   createOrderSchema,
   type CreateOrderInput,
 } from "@kids-store/shared";
@@ -50,14 +51,7 @@ export interface OrderCreationResult {
 export function calculateUnitPrice(
   product: Pick<OrderVariantRecord["product"], "price" | "discountPrice">,
 ): number {
-  if (
-    product.discountPrice !== null &&
-    product.discountPrice < product.price
-  ) {
-    return product.discountPrice;
-  }
-
-  return product.price;
+  return calculateEffectivePrice(product);
 }
 
 export async function createOrderInTransaction(

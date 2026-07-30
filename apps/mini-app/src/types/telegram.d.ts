@@ -8,8 +8,27 @@ declare global {
     show(): void;
   }
 
+  interface TelegramHapticFeedback {
+    notificationOccurred(type: "error" | "success" | "warning"): void;
+    selectionChanged(): void;
+  }
+
+  interface TelegramMainButton {
+    disable(): void;
+    enable(): void;
+    hide(): void;
+    hideProgress(): void;
+    offClick(callback: () => void): void;
+    onClick(callback: () => void): void;
+    setText(text: string): void;
+    show(): void;
+    showProgress(leaveActive?: boolean): void;
+  }
+
   interface TelegramWebApp {
     BackButton: TelegramBackButton;
+    HapticFeedback?: TelegramHapticFeedback;
+    MainButton?: TelegramMainButton;
     colorScheme: "light" | "dark";
     expand(): void;
     initData: string;

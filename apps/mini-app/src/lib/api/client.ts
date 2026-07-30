@@ -8,6 +8,12 @@ export const TELEGRAM_INIT_DATA_HEADER = "x-telegram-init-data";
 
 export type TelegramInitDataSource = string | (() => string);
 
+export interface MiniAppApiRequestOptions {
+  body?: unknown;
+  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  signal?: AbortSignal;
+}
+
 export class ApiClientError extends Error {
   readonly status: number;
 
@@ -24,6 +30,20 @@ export async function fetchMiniAppApi<T>(
   schema: ZodType<T>,
   signal?: AbortSignal,
 ): Promise<T> {
+  return requestMiniAppApi(
+    path,
+    initDataSource,
+    schema,
+    signal === undefined ? {} : { signal },
+  );
+}
+
+export async function requestMiniAppApi<T>(
+  path: string,
+  initDataSource: TelegramInitDataSource,
+  schema: ZodType<T>,
+  options: MiniAppApiRequestOptions = {},
+): Promise<T> {
   const initData =
     typeof initDataSource === "function"
       ? initDataSource()
@@ -32,15 +52,24 @@ export async function fetchMiniAppApi<T>(
     Accept: "application/json",
   });
 
+  if (options.body !== undefined) {
+    headers.set("Content-Type", "application/json");
+  }
+
   if (initData.length > 0) {
     headers.set(TELEGRAM_INIT_DATA_HEADER, initData);
   }
 
   const response = await fetch(path, {
-    method: "GET",
+    method: options.method ?? "GET",
     headers,
     cache: "no-store",
-    ...(signal === undefined ? {} : { signal }),
+    ...(options.body === undefined
+      ? {}
+      : { body: JSON.stringify(options.body) }),
+    ...(options.signal === undefined
+      ? {}
+      : { signal: options.signal }),
   });
   const payload: unknown = await response.json();
 

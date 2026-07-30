@@ -90,15 +90,15 @@ mumkin.
 
 ## Telegram Mini App
 
-Mini App hozircha xavfsiz Telegram autentifikatsiyasi va read-only mahsulot
-katalogini taqdim etadi. Savatcha va Mini App orqali buyurtma yaratish keyingi
-bosqichga qoldirilgan.
+Mini App xavfsiz Telegram autentifikatsiyasi, mahsulot katalogi, persistent
+savatcha, checkout va foydalanuvchining buyurtmalar tarixini taqdim etadi.
 
 Next.js lokal development uchun `apps/mini-app/.env.local` faylini qo‘lda
 yarating:
 
 ```dotenv
 TELEGRAM_BOT_TOKEN=
+ADMIN_TELEGRAM_ID=
 DATABASE_URL=
 NEXT_PUBLIC_MINI_APP_URL=http://localhost:3000
 MINI_APP_DEV_MODE=true
@@ -136,17 +136,36 @@ Frontend raw `Telegram.WebApp.initData`ni API’ga yuboradi. Server hash,
 endpointlariga ruxsat beradi. `initDataUnsafe` autentifikatsiya uchun
 ishlatilmaydi va bot tokeni client bundle’ga uzatilmaydi.
 
-Read-only endpointlar:
+API endpointlar:
 
 ```text
 GET /api/auth/me
 GET /api/categories
 GET /api/products
 GET /api/products/:id
+GET /api/cart
+POST /api/cart/items
+PATCH /api/cart/items/:id
+DELETE /api/cart/items/:id
+DELETE /api/cart
+POST /api/checkout
+GET /api/orders
+GET /api/orders/:id
 ```
 
 Products endpoint `category`, `search`, `discountOnly`, `page` va `limit`
 query parametrlarini qo‘llaydi.
+
+Cart, checkout va orders endpointlari har bir so‘rovda raw
+`x-telegram-init-data` headerini qayta tekshiradi. Narx, stock, total va
+customer identifikatori faqat server va database qiymatlaridan olinadi.
+
+Savatcha `Cart` va `CartItem` jadvallarida saqlanadi. Checkout variantlarni
+transaction ichida qayta tekshiradi, stockni atomik kamaytiradi, `Order` va
+`OrderItem` yozuvlarini yaratadi va faqat muvaffaqiyatdan keyin savatchani
+tozalaydi. UUID `idempotencyKey` takror tasdiqlashda dublikat orderni
+to‘xtatadi. Telegram notification xatosi order transactionini rollback
+qilmaydi.
 
 Build va production rejimi:
 
@@ -182,8 +201,10 @@ Prisma komandalar:
 ```bash
 pnpm db:migrate
 pnpm db:deploy
+pnpm db:validate
 pnpm db:seed
+pnpm db:status
 pnpm db:studio
 ```
 
-Hozircha Mini App savatchasi, admin panel, AI va public website mavjud emas.
+Hozircha admin panel, AI va public website mavjud emas.

@@ -64,6 +64,7 @@ model ProductVariant {
   productId  Int
   product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
+  cartItems  CartItem[]
 
   @@unique([productId, size, color])
 }
@@ -90,8 +91,32 @@ model Customer {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   orders         Order[]
+  cart           Cart?
 
   @@index([username])
+}
+
+model Cart {
+  id         Int        @id @default(autoincrement())
+  customerId Int        @unique
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items      CartItem[]
+}
+
+model CartItem {
+  id               Int            @id @default(autoincrement())
+  cartId           Int
+  productVariantId Int
+  quantity         Int
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  cart             Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
+
+  @@unique([cartId, productVariantId])
+  @@index([productVariantId])
 }
 
 model Order {
