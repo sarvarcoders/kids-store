@@ -1,6 +1,9 @@
 import { config } from "dotenv";
 import { fileURLToPath } from "node:url";
+import { adminTelegramIdsSchema } from "@kids-store/shared";
 import { z } from "zod";
+
+import { adminAppUrlSchema } from "./admin-launcher.js";
 
 config({
   path: fileURLToPath(new URL("../../../../.env", import.meta.url)),
@@ -35,6 +38,8 @@ const envSchema = z.object({
     .trim()
     .regex(/^[1-9]\d*$/, "ADMIN_TELEGRAM_ID musbat Telegram user ID bo‘lishi kerak")
     .transform((value) => BigInt(value)),
+  ADMIN_TELEGRAM_IDS: adminTelegramIdsSchema,
+  ADMIN_APP_URL: adminAppUrlSchema,
 });
 
 export const env = envSchema.parse(process.env);

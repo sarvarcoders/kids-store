@@ -62,6 +62,18 @@ Admin kanal publish komandasi:
 /publish <product_id>
 ```
 
+Admin panel launcher uchun root `.env` ichida allowlist va production HTTPS URL
+sozlanadi:
+
+```dotenv
+ADMIN_TELEGRAM_IDS=123456789,987654321
+ADMIN_APP_URL=https://kids-store-admin-lyart.vercel.app
+```
+
+Allowlistdagi foydalanuvchi `/admin` komandasini yuborganda bot
+`⚙️ Admin panel` Web App tugmasini ko‘rsatadi. Botning mavjud
+`🛍 Do‘kon` default menu tugmasi o‘zgarmaydi.
+
 Tugallanmagan bot checkout sessioni process memory’sida saqlanadi va restartda
 yo‘qoladi. Database’ga yozilgan buyurtmalar saqlanib qoladi.
 

@@ -2,6 +2,7 @@ import { Bot, session } from "grammy";
 
 import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
+import { registerAdminHandler } from "./handlers/admin.handler.js";
 import { registerCallbackHandlers } from "./handlers/callback.handler.js";
 import { registerOrderHandlers } from "./handlers/order.handler.js";
 import { registerPublishHandler } from "./handlers/publish.handler.js";
@@ -23,6 +24,10 @@ bot.use(
 );
 
 registerStartHandler(bot);
+registerAdminHandler(bot, {
+  adminAppUrl: env.ADMIN_APP_URL,
+  allowedAdminIds: env.ADMIN_TELEGRAM_IDS,
+});
 registerPublishHandler(bot, new ChannelPostService(bot.api));
 registerOrderHandlers(bot, new OrderService());
 registerCallbackHandlers(bot);
