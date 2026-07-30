@@ -13,6 +13,7 @@ declare global {
     colorScheme: "light" | "dark";
     expand(): void;
     initData: string;
+    platform?: string;
     offEvent(event: "themeChanged", callback: () => void): void;
     onEvent(event: "themeChanged", callback: () => void): void;
     ready(): void;

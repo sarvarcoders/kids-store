@@ -35,20 +35,27 @@ export function ProductDetail({
   productId: string;
 }): ReactNode {
   const router = useRouter();
-  const { initData, isReady } = useTelegram();
+  const {
+    initData,
+    initializationError,
+    isReady,
+    retryInitialization,
+  } = useTelegram();
   const [product, setProduct] = useState<ProductDetailDto | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [retryVersion, setRetryVersion] = useState(0);
 
-  useEffect(
-    () =>
-      showTelegramBackButton(() => {
-        router.back();
-      }),
-    [router],
-  );
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+
+    return showTelegramBackButton(() => {
+      router.back();
+    });
+  }, [isReady, router]);
 
   useEffect(() => {
     if (!isReady) {
@@ -107,6 +114,17 @@ export function ProductDetail({
         : [],
     [product],
   );
+
+  if (initializationError) {
+    return (
+      <main className="mx-auto min-h-screen w-full max-w-3xl px-3 py-5 sm:px-5">
+        <ErrorState
+          message={initializationError}
+          onRetry={retryInitialization}
+        />
+      </main>
+    );
+  }
 
   if (!isReady || isLoading) {
     return (

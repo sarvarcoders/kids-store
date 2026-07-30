@@ -35,7 +35,12 @@ function getErrorMessage(error: unknown): string {
 }
 
 export function CatalogPage(): ReactNode {
-  const { initData, isReady } = useTelegram();
+  const {
+    initData,
+    initializationError,
+    isReady,
+    retryInitialization,
+  } = useTelegram();
   const [viewer, setViewer] =
     useState<VerifiedTelegramUserDto | null>(null);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
@@ -189,6 +194,17 @@ export function CatalogPage(): ReactNode {
   function selectCategory(slug: string): void {
     setSelectedCategory(slug);
     setPage(1);
+  }
+
+  if (initializationError) {
+    return (
+      <main className="mx-auto min-h-screen w-full max-w-3xl px-3 py-5 sm:px-5">
+        <ErrorState
+          message={initializationError}
+          onRetry={retryInitialization}
+        />
+      </main>
+    );
   }
 
   const greeting = viewer

@@ -3,6 +3,7 @@ import Script from "next/script";
 import type { ReactNode } from "react";
 
 import { TelegramProvider } from "@/components/telegram/telegram-provider";
+import { isMiniAppDevelopmentMockEnabled } from "@/lib/env/server";
 
 import "./globals.css";
 
@@ -29,12 +30,19 @@ export default function RootLayout({
 }>): ReactNode {
   return (
     <html lang="uz" suppressHydrationWarning>
-      <body>
+      <head>
         <Script
+          id="telegram-web-app-sdk"
           src="https://telegram.org/js/telegram-web-app.js"
           strategy="beforeInteractive"
         />
-        <TelegramProvider>{children}</TelegramProvider>
+      </head>
+      <body>
+        <TelegramProvider
+          allowDevelopmentMock={isMiniAppDevelopmentMockEnabled()}
+        >
+          {children}
+        </TelegramProvider>
       </body>
     </html>
   );
