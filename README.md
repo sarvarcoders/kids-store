@@ -1,16 +1,14 @@
 # Kids Store
 
-Bolalar kiyimlari sotadigan Telegram do‘kon uchun boshlang‘ich monorepo.
+Bolalar kiyimlari uchun Telegram-first internet do‘kon monoreposi.
 
 ## Texnologiyalar
 
-- Node.js va TypeScript
+- Node.js 24+, TypeScript strict va ESM
 - pnpm workspaces
 - grammY
 - Next.js App Router, React va Tailwind CSS
-- PostgreSQL
-- Prisma ORM
-- Zod
+- PostgreSQL, Prisma ORM va Zod
 
 ## Tuzilma
 
@@ -18,83 +16,58 @@ Bolalar kiyimlari sotadigan Telegram do‘kon uchun boshlang‘ich monorepo.
 .
 ├── apps/
 │   ├── bot/               # Telegram bot
-│   └── mini-app/          # Telegram Mini App katalogi
+│   ├── mini-app/          # Telegram Mini App
+│   └── admin/             # Xavfsiz Admin Panel
 ├── packages/
-│   ├── database/          # Prisma va PostgreSQL qatlami
-│   └── shared/            # Umumiy sxema va turlar
-└── docs/                  # Loyiha hujjatlari
+│   ├── core/              # Server-only umumiy auth/publish/notification
+│   ├── database/          # Prisma va PostgreSQL
+│   └── shared/            # Umumiy Zod schema va turlar
+└── docs/
 ```
-
-## Talablar
-
-- Node.js 24 yoki undan yangi
-- pnpm 11 yoki undan yangi
-- Ishlayotgan PostgreSQL serveri
-- BotFather orqali olingan Telegram bot tokeni
 
 ## O‘rnatish
 
 ```bash
 pnpm install
 cp .env.example .env
+pnpm db:generate
 ```
 
-Windows PowerShell uchun:
+Windows PowerShell:
 
 ```powershell
 pnpm install
 Copy-Item .env.example .env
-```
-
-Keyin `.env` ichidagi `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`,
-`TELEGRAM_BOT_USERNAME`, `ADMIN_TELEGRAM_ID`, `DATABASE_URL` va `DIRECT_URL`
-qiymatlarini kiriting. Root `.env` bot va Prisma CLI entrypointlari uchun
-ishlatiladi; Mini App runtime root `.env` faylini bevosita o‘qimaydi.
-
-Prisma Client’ni generatsiya qiling:
-
-```bash
 pnpm db:generate
 ```
 
-## Ishga tushirish
+Root `.env` bot va Prisma CLI uchun ishlatiladi. Haqiqiy token, database URL,
+parol yoki session secretni Git’ga commit qilmang.
 
-Development rejimida botni ishga tushirish:
+## Telegram bot
 
 ```bash
 pnpm dev
 ```
 
-`pnpm dev` faqat Telegram botni ishga tushiradi.
-
-Bot `/start` komandasida bosh menyuni ko‘rsatadi. Mahsulotni Telegram deep link
-orqali ochish uchun quyidagi format ishlatiladi:
+`pnpm dev` faqat botni ishga tushiradi. Product deep link formati:
 
 ```text
 https://t.me/<bot_username>?start=product_<product_id>
 ```
 
-Admin mahsulotni Telegram kanaliga chiqarishi uchun:
+Admin kanal publish komandasi:
 
 ```text
 /publish <product_id>
 ```
 
-Mahsulot variantini tanlash va tugallanmagan buyurtma holati hozircha process
-memory’sida saqlanadi. Bot qayta ishga tushganda tugallanmagan checkout session
-yo‘qoladi; tasdiqlanib database’ga yozilgan buyurtmalar saqlanib qoladi.
-
-Buyurtma oqimi: o‘lcham va rang → miqdor → telefon → yetkazib berish manzili →
-yakuniy tasdiqlash. Telefonni Telegram contact tugmasi yoki matn orqali yuborish
-mumkin.
+Tugallanmagan bot checkout sessioni process memory’sida saqlanadi va restartda
+yo‘qoladi. Database’ga yozilgan buyurtmalar saqlanib qoladi.
 
 ## Telegram Mini App
 
-Mini App xavfsiz Telegram autentifikatsiyasi, mahsulot katalogi, persistent
-savatcha, checkout va foydalanuvchining buyurtmalar tarixini taqdim etadi.
-
-Next.js lokal development uchun `apps/mini-app/.env.local` faylini qo‘lda
-yarating:
+`apps/mini-app/.env.local` faylini qo‘lda yarating:
 
 ```dotenv
 TELEGRAM_BOT_TOKEN=
@@ -104,107 +77,107 @@ NEXT_PUBLIC_MINI_APP_URL=http://localhost:3000
 MINI_APP_DEV_MODE=true
 ```
 
-Bu fayl Git tomonidan ignore qilinadi. Haqiqiy token yoki database manzilini
-commit qilmang. `DIRECT_URL` Mini App runtime qiymati emas; u root `.env` orqali
-faqat Prisma migration, introspection va generate jarayonlarida ishlatiladi.
-Root `.env` qiymatlarini `.env.local`ga avtomatik nusxalovchi script mavjud
-emas.
-
-Keyin Mini App’ni alohida ishga tushiring:
-
 ```bash
 pnpm dev:mini-app
 ```
 
-Local manzil odatda `http://localhost:3000`. Mock user faqat
-`NODE_ENV=development` va `MINI_APP_DEV_MODE=true` bo‘lganda ishlaydi.
-Production build va `next start` rejimida bu bypass yopiq.
+Mini App raw `Telegram.WebApp.initData`ni serverga yuboradi. Server Telegram
+hash, `auth_date` va user JSON’ni tekshiradi. `initDataUnsafe` auth manbasi
+emas. Mock user faqat `NODE_ENV=development` va `MINI_APP_DEV_MODE=true`
+bo‘lganda ishlaydi; production’da bypass yopiq.
 
-Real Telegram ichida sinash uchun:
+Mini App katalog, persistent cart, checkout va order history’ni taqdim etadi.
+Checkout narx va stockni database’dan transaction ichida qayta o‘qiydi,
+stockni atomic kamaytiradi va idempotency key bilan duplicate orderni
+to‘xtatadi.
 
-1. Mini App’ni HTTPS manzilga joylashtiring.
-2. Shu manzilni Vercel Project Environment Variables ichida
-   `NEXT_PUBLIC_MINI_APP_URL` sifatida kiriting.
-3. BotFather orqali botning Mini App yoki menu button URL’ini shu HTTPS
-   manzilga sozlang.
-4. Vercel’da `TELEGRAM_BOT_TOKEN`, `DATABASE_URL` va Prisma build uchun
-   `DIRECT_URL` server qiymatlarini kiriting; `MINI_APP_DEV_MODE=false` qiling.
-5. Mini App’ni Telegram ichidagi tugmadan oching.
+## Admin panel
 
-Frontend raw `Telegram.WebApp.initData`ni API’ga yuboradi. Server hash,
-`auth_date` va Telegram user JSON’ini tekshirgandan keyingina katalog
-endpointlariga ruxsat beradi. `initDataUnsafe` autentifikatsiya uchun
-ishlatilmaydi va bot tokeni client bundle’ga uzatilmaydi.
+Admin panel dashboard, mahsulotlar, kategoriyalar, buyurtmalar, mijozlar,
+kanal postlari, append-only audit log va sozlamalarni taqdim etadi.
 
-API endpointlar:
+`apps/admin/.env.local` faylini qo‘lda yarating:
 
-```text
-GET /api/auth/me
-GET /api/categories
-GET /api/products
-GET /api/products/:id
-GET /api/cart
-POST /api/cart/items
-PATCH /api/cart/items/:id
-DELETE /api/cart/items/:id
-DELETE /api/cart
-POST /api/checkout
-GET /api/orders
-GET /api/orders/:id
+```dotenv
+DATABASE_URL=
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHANNEL_ID=
+TELEGRAM_BOT_USERNAME=
+ADMIN_TELEGRAM_IDS=123456789,987654321
+ADMIN_SESSION_SECRET=
+NEXT_PUBLIC_ADMIN_URL=http://localhost:3001
 ```
 
-Products endpoint `category`, `search`, `discountOnly`, `page` va `limit`
-query parametrlarini qo‘llaydi.
-
-Cart, checkout va orders endpointlari har bir so‘rovda raw
-`x-telegram-init-data` headerini qayta tekshiradi. Narx, stock, total va
-customer identifikatori faqat server va database qiymatlaridan olinadi.
-
-Savatcha `Cart` va `CartItem` jadvallarida saqlanadi. Checkout variantlarni
-transaction ichida qayta tekshiradi, stockni atomik kamaytiradi, `Order` va
-`OrderItem` yozuvlarini yaratadi va faqat muvaffaqiyatdan keyin savatchani
-tozalaydi. UUID `idempotencyKey` takror tasdiqlashda dublikat orderni
-to‘xtatadi. Telegram notification xatosi order transactionini rollback
-qilmaydi.
-
-Build va production rejimi:
+`ADMIN_SESSION_SECRET` kamida 32 belgili, tasodifiy va production uchun alohida
+qiymat bo‘lsin. `ADMIN_TELEGRAM_IDS` vergul bilan ajratilgan musbat Telegram
+IDlaridir. `.env.local` Git tomonidan ignore qilinadi.
 
 ```bash
-pnpm build
-pnpm start
+pnpm dev:admin
 ```
 
-Faqat Mini App production build:
+Admin panel odatda `http://localhost:3001` da ishlaydi. Login serverda Telegram
+`initData`ni tekshiradi, user ID allowlistda bo‘lsa 30 daqiqalik imzolangan
+HttpOnly cookie beradi. Cookie raw initData’ni saqlamaydi. Mutationlar CSRF,
+rate limit va idempotency key bilan himoyalangan.
 
-```bash
-pnpm build:mini-app
-```
+MVP’da production auth bypass va parolli login yo‘q. Oddiy browser orqali
+kirish o‘rniga admin panelni botdagi alohida Telegram Web App tugmasidan
+oching. Keyingi browser auth SSO yoki passkey bilan alohida xavfsizlik auditi
+asosida rejalashtiriladi.
 
-TypeScript tekshiruvi:
+Rasm boshqaruvi HTTPS URL’ni saqlaydi, tashqi URL’ni serverdan fetch qilmaydi.
+MVP allowlisti `placehold.co` va `images.unsplash.com` hostlari bilan
+cheklangan.
+
+### Vercel monorepo deploy
+
+1. Vercel project Root Directory qiymatini `apps/admin` qiling.
+2. `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`,
+   `TELEGRAM_BOT_USERNAME`, `ADMIN_TELEGRAM_IDS` va kuchli
+   `ADMIN_SESSION_SECRET`ni server Environment Variables sifatida kiriting.
+3. Faqat public URL’ni `NEXT_PUBLIC_ADMIN_URL` sifatida kiriting.
+4. Botdagi admin Web App tugmasini production HTTPS URL’ga ulang.
+5. `AdminAuditLog` migration production database’ga deploy qilinganidan keyin
+   panelni ishga tushiring.
+
+In-memory rate limit va idempotency cache serverless instansiyalar orasida
+umumiy emas. Katta production deployment uchun Redis kabi shared storage
+tavsiya qilinadi. Database transaction, unique constraint va conditional order
+status update data integrity’ni saqlaydi.
+
+## Tekshiruv va build
 
 ```bash
 pnpm typecheck
-pnpm typecheck:mini-app
-```
-
-Lint, test va to‘liq build:
-
-```bash
 pnpm lint
-pnpm lint:mini-app
 pnpm test
 pnpm build
 ```
 
-Prisma komandalar:
+Alohida ilovalar:
 
 ```bash
+pnpm typecheck:mini-app
+pnpm lint:mini-app
+pnpm build:mini-app
+
+pnpm typecheck:admin
+pnpm lint:admin
+pnpm test:admin
+pnpm build:admin
+```
+
+Prisma:
+
+```bash
+pnpm db:generate
+pnpm db:validate
 pnpm db:migrate
 pnpm db:deploy
-pnpm db:validate
-pnpm db:seed
 pnpm db:status
+pnpm db:seed
 pnpm db:studio
 ```
 
-Hozircha admin panel, AI va public website mavjud emas.
+AI assistant va public website hozircha mavjud emas.

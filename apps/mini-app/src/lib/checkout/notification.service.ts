@@ -7,15 +7,11 @@ import {
   type OrderNotificationInput,
   type VerifiedTelegramUserDto,
 } from "@kids-store/shared";
-import { z } from "zod";
+import { sendTelegramTextMessage } from "@kids-store/core";
 
 import { logServerError } from "../api/response";
 import { serverEnv } from "../env/server";
 import { runNotificationSafely } from "./notification-runner";
-
-const telegramResponseSchema = z.object({
-  ok: z.boolean(),
-});
 
 async function sendTelegramMessage(
   chatId: string,
@@ -27,31 +23,7 @@ async function sendTelegramMessage(
     throw new Error("Telegram bot server konfiguratsiyasi mavjud emas.");
   }
 
-  const response = await fetch(
-    `https://api.telegram.org/bot${botToken}/sendMessage`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-      }),
-      cache: "no-store",
-    },
-  );
-  const parsedResponse = telegramResponseSchema.safeParse(
-    await response.json(),
-  );
-
-  if (
-    !response.ok ||
-    !parsedResponse.success ||
-    !parsedResponse.data.ok
-  ) {
-    throw new Error("Telegram xabar yuborishni rad etdi.");
-  }
+  await sendTelegramTextMessage({ botToken, chatId, text });
 }
 
 async function deliverCheckoutNotifications(

@@ -4,14 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "pnpm --filter @kids-store/database build",
+    "predev": "pnpm --filter @kids-store/core build",
     "dev": "tsx watch src/index.ts",
+    "prebuild": "pnpm --filter @kids-store/core build",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tests/tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@kids-store/core": "workspace:*",
     "@kids-store/database": "workspace:*",
     "@kids-store/shared": "workspace:*",
     "dotenv": "^17.4.2",

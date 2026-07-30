@@ -147,3 +147,18 @@ model OrderItem {
   @@unique([orderId, productVariantId])
   @@index([productVariantId])
 }
+
+model AdminAuditLog {
+  id                Int      @id @default(autoincrement())
+  adminTelegramId   BigInt
+  action            String   @db.VarChar(80)
+  entityType        String   @db.VarChar(80)
+  entityId          String   @db.VarChar(100)
+  metadata          Json
+  createdAt         DateTime @default(now())
+
+  @@index([adminTelegramId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+}

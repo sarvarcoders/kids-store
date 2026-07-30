@@ -30,33 +30,11 @@ importers:
         specifier: ^8.65.0
         version: 8.65.0(@typescript/typescript6@6.0.2)(eslint@10.8.0(jiti@2.7.0))
 
-  apps/bot:
+  apps/admin:
     dependencies:
-      '@kids-store/database':
+      '@kids-store/core':
         specifier: workspace:*
-        version: link:../../packages/database
-      '@kids-store/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      dotenv:
-        specifier: ^17.4.2
-        version: 17.4.2
-      grammy:
-        specifier: ^1.45.1
-        version: 1.45.1
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
-    devDependencies:
-      '@types/node':
-        specifier: ^24.13.3
-        version: 24.13.3
-      tsx:
-        specifier: ^4.22.5
-        version: 4.23.1
-
-  apps/mini-app:
-    dependencies:
+        version: link:../../packages/core
       '@kids-store/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -94,6 +72,105 @@ importers:
       tailwindcss:
         specifier: 4.3.3
         version: 4.3.3
+      tsx:
+        specifier: ^4.22.5
+        version: 4.23.1
+      typescript:
+        specifier: npm:@typescript/typescript6@^6.0.2
+        version: '@typescript/typescript6@6.0.2'
+
+  apps/bot:
+    dependencies:
+      '@kids-store/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@kids-store/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@kids-store/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
+      grammy:
+        specifier: ^1.45.1
+        version: 1.45.1
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.3
+      tsx:
+        specifier: ^4.22.5
+        version: 4.23.1
+
+  apps/mini-app:
+    dependencies:
+      '@kids-store/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@kids-store/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@kids-store/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      next:
+        specifier: 16.2.12
+        version: 16.2.12(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: 19.2.8
+        version: 19.2.8(react@19.2.8)
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: 4.3.3
+        version: 4.3.3
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.3
+      '@types/react':
+        specifier: 19.2.17
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: 19.2.3
+        version: 19.2.3(@types/react@19.2.17)
+      postcss:
+        specifier: 8.5.22
+        version: 8.5.22
+      tailwindcss:
+        specifier: 4.3.3
+        version: 4.3.3
+      tsx:
+        specifier: ^4.22.5
+        version: 4.23.1
+      typescript:
+        specifier: npm:@typescript/typescript6@^6.0.2
+        version: '@typescript/typescript6@6.0.2'
+
+  packages/core:
+    dependencies:
+      '@kids-store/database':
+        specifier: workspace:*
+        version: link:../database
+      '@kids-store/shared':
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.3
       tsx:
         specifier: ^4.22.5
         version: 4.23.1
