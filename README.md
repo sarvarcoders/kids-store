@@ -47,8 +47,9 @@ Copy-Item .env.example .env
 ```
 
 Keyin `.env` ichidagi `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`,
-`TELEGRAM_BOT_USERNAME`, `ADMIN_TELEGRAM_ID`, `DATABASE_URL`, `DIRECT_URL`,
-`NEXT_PUBLIC_MINI_APP_URL` va `MINI_APP_DEV_MODE` qiymatlarini kiriting.
+`TELEGRAM_BOT_USERNAME`, `ADMIN_TELEGRAM_ID`, `DATABASE_URL` va `DIRECT_URL`
+qiymatlarini kiriting. Root `.env` bot va Prisma CLI entrypointlari uchun
+ishlatiladi; Mini App runtime root `.env` faylini bevosita o‘qimaydi.
 
 Prisma Client’ni generatsiya qiling:
 
@@ -93,11 +94,21 @@ Mini App hozircha xavfsiz Telegram autentifikatsiyasi va read-only mahsulot
 katalogini taqdim etadi. Savatcha va Mini App orqali buyurtma yaratish keyingi
 bosqichga qoldirilgan.
 
-Local browser preview uchun root `.env` ichida quyidagini explicit yoqing:
+Next.js lokal development uchun `apps/mini-app/.env.local` faylini qo‘lda
+yarating:
 
 ```dotenv
+TELEGRAM_BOT_TOKEN=
+DATABASE_URL=
+NEXT_PUBLIC_MINI_APP_URL=http://localhost:3000
 MINI_APP_DEV_MODE=true
 ```
+
+Bu fayl Git tomonidan ignore qilinadi. Haqiqiy token yoki database manzilini
+commit qilmang. `DIRECT_URL` Mini App runtime qiymati emas; u root `.env` orqali
+faqat Prisma migration, introspection va generate jarayonlarida ishlatiladi.
+Root `.env` qiymatlarini `.env.local`ga avtomatik nusxalovchi script mavjud
+emas.
 
 Keyin Mini App’ni alohida ishga tushiring:
 
@@ -112,10 +123,12 @@ Production build va `next start` rejimida bu bypass yopiq.
 Real Telegram ichida sinash uchun:
 
 1. Mini App’ni HTTPS manzilga joylashtiring.
-2. Shu manzilni `.env` ichida `NEXT_PUBLIC_MINI_APP_URL` sifatida kiriting.
+2. Shu manzilni Vercel Project Environment Variables ichida
+   `NEXT_PUBLIC_MINI_APP_URL` sifatida kiriting.
 3. BotFather orqali botning Mini App yoki menu button URL’ini shu HTTPS
    manzilga sozlang.
-4. `MINI_APP_DEV_MODE=false` qiling.
+4. Vercel’da `TELEGRAM_BOT_TOKEN`, `DATABASE_URL` va Prisma build uchun
+   `DIRECT_URL` server qiymatlarini kiriting; `MINI_APP_DEV_MODE=false` qiling.
 5. Mini App’ni Telegram ichidagi tugmadan oching.
 
 Frontend raw `Telegram.WebApp.initData`ni API’ga yuboradi. Server hash,

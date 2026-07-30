@@ -1,13 +1,6 @@
 import "server-only";
 
-import { config } from "dotenv";
-import { fileURLToPath } from "node:url";
 import { z } from "zod";
-
-config({
-  path: fileURLToPath(new URL("../../../../../.env", import.meta.url)),
-  quiet: true,
-});
 
 const optionalUrlSchema = z.preprocess(
   (value) =>

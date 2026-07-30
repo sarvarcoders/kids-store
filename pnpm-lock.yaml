@@ -63,9 +63,6 @@ importers:
       '@kids-store/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      dotenv:
-        specifier: ^17.4.2
-        version: 17.4.2
       next:
         specifier: 16.2.12
         version: 16.2.12(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
