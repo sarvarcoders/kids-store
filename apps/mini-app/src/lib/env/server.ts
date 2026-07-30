@@ -7,13 +7,20 @@ const optionalUrlSchema = z.preprocess(
     typeof value === "string" && value.trim().length === 0 ? undefined : value,
   z.url().optional(),
 );
+const botTokenSchema = z
+  .string()
+  .min(1, "TELEGRAM_BOT_TOKEN server uchun kiritilishi shart")
+  .refine(
+    (value) => value === value.trim(),
+    "TELEGRAM_BOT_TOKEN boshida yoki oxirida whitespace bo‘lmasligi kerak",
+  );
 
 const serverEnvSchema = z
   .object({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
-    TELEGRAM_BOT_TOKEN: z.string().trim().optional(),
+    TELEGRAM_BOT_TOKEN: botTokenSchema.optional(),
     MINI_APP_DEV_MODE: z
       .enum(["true", "false"])
       .default("false")

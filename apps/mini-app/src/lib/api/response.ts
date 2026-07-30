@@ -4,8 +4,6 @@ import {
 } from "@kids-store/shared";
 import { NextResponse } from "next/server";
 
-import { MiniAppAuthenticationError } from "../auth/request-auth";
-
 export function createApiErrorResponse(
   status: number,
   code: string,
@@ -18,18 +16,20 @@ export function createApiErrorResponse(
     },
   });
 
-  return NextResponse.json(body, { status });
+  return NextResponse.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "no-store",
+    },
+  });
 }
 
-export function createAuthenticationErrorResponse(
-  error: unknown,
-): NextResponse<ApiErrorResponse> {
-  const message =
-    error instanceof MiniAppAuthenticationError
-      ? error.message
-      : "Telegram autentifikatsiyasi bajarilmadi.";
-
-  return createApiErrorResponse(401, "AUTHENTICATION_REQUIRED", message);
+export function createAuthenticationErrorResponse(): NextResponse<ApiErrorResponse> {
+  return createApiErrorResponse(
+    401,
+    "AUTHENTICATION_REQUIRED",
+    "Telegram autentifikatsiyasi bajarilmadi. Mini App’ni qayta oching.",
+  );
 }
 
 export function logServerError(

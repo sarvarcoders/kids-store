@@ -62,7 +62,7 @@ export async function GET(
     });
   } catch (error) {
     if (error instanceof MiniAppAuthenticationError) {
-      return createAuthenticationErrorResponse(error);
+      return createAuthenticationErrorResponse();
     }
 
     logServerError("get-product", error);

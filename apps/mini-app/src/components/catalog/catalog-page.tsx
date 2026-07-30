@@ -36,9 +36,9 @@ function getErrorMessage(error: unknown): string {
 
 export function CatalogPage(): ReactNode {
   const {
-    initData,
     initializationError,
     isReady,
+    readInitData,
     retryInitialization,
   } = useTelegram();
   const [viewer, setViewer] =
@@ -78,19 +78,19 @@ export function CatalogPage(): ReactNode {
           await Promise.all([
             fetchMiniAppApi(
               "/api/auth/me",
-              initData,
+              readInitData,
               authSessionResponseSchema,
               controller.signal,
             ),
             fetchMiniAppApi(
               "/api/categories",
-              initData,
+              readInitData,
               categoryListResponseSchema,
               controller.signal,
             ),
             fetchMiniAppApi(
               `/api/products?discountOnly=true&limit=${String(DISCOUNT_PRODUCTS_LIMIT)}`,
-              initData,
+              readInitData,
               productListResponseSchema,
               controller.signal,
             ),
@@ -115,7 +115,7 @@ export function CatalogPage(): ReactNode {
     return () => {
       controller.abort();
     };
-  }, [initData, isReady, retryVersion]);
+  }, [isReady, readInitData, retryVersion]);
 
   useEffect(() => {
     if (!isReady) {
@@ -143,7 +143,7 @@ export function CatalogPage(): ReactNode {
       try {
         const response = await fetchMiniAppApi(
           `/api/products?${query.toString()}`,
-          initData,
+          readInitData,
           productListResponseSchema,
           controller.signal,
         );
@@ -167,9 +167,9 @@ export function CatalogPage(): ReactNode {
       controller.abort();
     };
   }, [
-    initData,
     isReady,
     page,
+    readInitData,
     retryVersion,
     search,
     selectedCategory,

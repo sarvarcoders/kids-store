@@ -44,7 +44,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     });
   } catch (error) {
     if (error instanceof MiniAppAuthenticationError) {
-      return createAuthenticationErrorResponse(error);
+      return createAuthenticationErrorResponse();
     }
 
     logServerError("list-products", error);

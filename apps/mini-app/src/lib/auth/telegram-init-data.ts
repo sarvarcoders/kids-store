@@ -15,34 +15,46 @@ const MAX_INIT_DATA_LENGTH = 16_384;
 const FUTURE_AUTH_DATE_TOLERANCE_SECONDS = 30;
 const authDateSchema = z.coerce.number().int().positive();
 const hashSchema = z.string().regex(/^[a-f0-9]{64}$/i);
+const botTokenSchema = z
+  .string()
+  .min(1)
+  .refine((value) => value === value.trim());
 const optionsSchema = z.object({
   maxAgeSeconds: z.number().int().positive().max(86_400),
   nowSeconds: z.number().int().positive(),
 });
 
-export type TelegramInitDataErrorCode =
-  | "MALFORMED_INIT_DATA"
-  | "INVALID_HASH"
-  | "EXPIRED_AUTH_DATE"
-  | "MISSING_USER";
+export type TelegramAuthReasonCode =
+  | "valid"
+  | "missing_header"
+  | "empty_init_data"
+  | "duplicate_parameter"
+  | "missing_hash"
+  | "invalid_hash"
+  | "missing_auth_date"
+  | "expired_auth_date"
+  | "future_auth_date"
+  | "missing_user"
+  | "invalid_user_json";
 
-const authErrorMessages: Record<TelegramInitDataErrorCode, string> = {
-  MALFORMED_INIT_DATA: "Telegram autentifikatsiya ma’lumoti noto‘g‘ri.",
-  INVALID_HASH: "Telegram autentifikatsiyasi tasdiqlanmadi.",
-  EXPIRED_AUTH_DATE: "Telegram sessiyasi eskirgan. Mini App’ni qayta oching.",
-  MISSING_USER: "Telegram foydalanuvchi ma’lumoti topilmadi.",
-};
+export type TelegramInitDataFailureReasonCode = Exclude<
+  TelegramAuthReasonCode,
+  "valid" | "missing_header"
+>;
 
 export class TelegramInitDataError extends Error {
-  readonly code: TelegramInitDataErrorCode;
+  readonly reasonCode: TelegramInitDataFailureReasonCode;
 
-  constructor(code: TelegramInitDataErrorCode, cause?: unknown) {
+  constructor(
+    reasonCode: TelegramInitDataFailureReasonCode,
+    cause?: unknown,
+  ) {
     super(
-      authErrorMessages[code],
+      "Telegram autentifikatsiyasi tasdiqlanmadi.",
       cause === undefined ? undefined : { cause },
     );
     this.name = "TelegramInitDataError";
-    this.code = code;
+    this.reasonCode = reasonCode;
   }
 }
 
@@ -53,11 +65,12 @@ export interface ValidatedTelegramInitData {
 }
 
 function parseUniqueParams(rawInitData: string): URLSearchParams {
-  if (
-    rawInitData.length === 0 ||
-    rawInitData.length > MAX_INIT_DATA_LENGTH
-  ) {
-    throw new TelegramInitDataError("MALFORMED_INIT_DATA");
+  if (rawInitData.length === 0) {
+    throw new TelegramInitDataError("empty_init_data");
+  }
+
+  if (rawInitData.length > MAX_INIT_DATA_LENGTH) {
+    throw new TelegramInitDataError("invalid_hash");
   }
 
   const params = new URLSearchParams(rawInitData);
@@ -65,7 +78,7 @@ function parseUniqueParams(rawInitData: string): URLSearchParams {
 
   for (const [key] of params) {
     if (seenKeys.has(key)) {
-      throw new TelegramInitDataError("MALFORMED_INIT_DATA");
+      throw new TelegramInitDataError("duplicate_parameter");
     }
 
     seenKeys.add(key);
@@ -79,10 +92,16 @@ function verifyHash(
   botToken: string,
 ): void {
   const receivedHash = params.get("hash");
-  const parsedHash = hashSchema.safeParse(receivedHash);
 
-  if (!parsedHash.success || botToken.trim().length === 0) {
-    throw new TelegramInitDataError("INVALID_HASH");
+  if (receivedHash === null) {
+    throw new TelegramInitDataError("missing_hash");
+  }
+
+  const parsedHash = hashSchema.safeParse(receivedHash);
+  const parsedBotToken = botTokenSchema.safeParse(botToken);
+
+  if (!parsedHash.success || !parsedBotToken.success) {
+    throw new TelegramInitDataError("invalid_hash");
   }
 
   const dataCheckString = Array.from(params.entries())
@@ -93,7 +112,7 @@ function verifyHash(
     .map(([key, value]) => `${key}=${value}`)
     .join("\n");
   const secretKey = createHmac("sha256", "WebAppData")
-    .update(botToken)
+    .update(parsedBotToken.data)
     .digest();
   const expectedHash = createHmac("sha256", secretKey)
     .update(dataCheckString)
@@ -104,7 +123,7 @@ function verifyHash(
     receivedHashBuffer.length !== expectedHash.length ||
     !timingSafeEqual(receivedHashBuffer, expectedHash)
   ) {
-    throw new TelegramInitDataError("INVALID_HASH");
+    throw new TelegramInitDataError("invalid_hash");
   }
 }
 
@@ -116,8 +135,19 @@ export function validateTelegramInitData(
     nowSeconds?: number;
   } = {},
 ): ValidatedTelegramInitData {
-  const rawInitData = z.string().parse(rawInitDataInput);
-  const botToken = z.string().min(1).parse(botTokenInput);
+  const parsedRawInitData = z.string().safeParse(rawInitDataInput);
+  const parsedBotToken = botTokenSchema.safeParse(botTokenInput);
+
+  if (!parsedRawInitData.success) {
+    throw new TelegramInitDataError("empty_init_data");
+  }
+
+  if (!parsedBotToken.success) {
+    throw new TelegramInitDataError("invalid_hash");
+  }
+
+  const rawInitData = parsedRawInitData.data;
+  const botToken = parsedBotToken.data;
   const options = optionsSchema.parse({
     maxAgeSeconds:
       optionsInput.maxAgeSeconds ?? DEFAULT_INIT_DATA_MAX_AGE_SECONDS,
@@ -127,25 +157,32 @@ export function validateTelegramInitData(
 
   verifyHash(params, botToken);
 
-  const parsedAuthDate = authDateSchema.safeParse(params.get("auth_date"));
+  const rawAuthDate = params.get("auth_date");
+
+  if (rawAuthDate === null) {
+    throw new TelegramInitDataError("missing_auth_date");
+  }
+
+  const parsedAuthDate = authDateSchema.safeParse(rawAuthDate);
 
   if (!parsedAuthDate.success) {
-    throw new TelegramInitDataError("MALFORMED_INIT_DATA");
+    throw new TelegramInitDataError("missing_auth_date");
   }
 
   const ageSeconds = options.nowSeconds - parsedAuthDate.data;
 
-  if (
-    ageSeconds > options.maxAgeSeconds ||
-    ageSeconds < -FUTURE_AUTH_DATE_TOLERANCE_SECONDS
-  ) {
-    throw new TelegramInitDataError("EXPIRED_AUTH_DATE");
+  if (ageSeconds > options.maxAgeSeconds) {
+    throw new TelegramInitDataError("expired_auth_date");
+  }
+
+  if (ageSeconds < -FUTURE_AUTH_DATE_TOLERANCE_SECONDS) {
+    throw new TelegramInitDataError("future_auth_date");
   }
 
   const rawUser = params.get("user");
 
-  if (!rawUser) {
-    throw new TelegramInitDataError("MISSING_USER");
+  if (rawUser === null) {
+    throw new TelegramInitDataError("missing_user");
   }
 
   try {
@@ -157,6 +194,6 @@ export function validateTelegramInitData(
       user,
     };
   } catch (error) {
-    throw new TelegramInitDataError("MISSING_USER", error);
+    throw new TelegramInitDataError("invalid_user_json", error);
   }
 }

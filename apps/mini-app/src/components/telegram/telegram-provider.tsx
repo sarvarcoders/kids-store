@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -24,9 +25,9 @@ type TelegramProviderStatus =
   | "development-mock";
 
 interface TelegramContextValue {
-  initData: string;
   initializationError: string | null;
   isReady: boolean;
+  readInitData: () => string;
   retryInitialization: () => void;
   status: TelegramProviderStatus;
 }
@@ -49,7 +50,7 @@ export function TelegramProvider({
   allowDevelopmentMock?: boolean;
   children: ReactNode;
 }): ReactNode {
-  const [initData, setInitData] = useState("");
+  const initDataRef = useRef("");
   const [status, setStatus] =
     useState<TelegramProviderStatus>("initializing");
   const [initializationVersion, setInitializationVersion] = useState(0);
@@ -58,7 +59,7 @@ export function TelegramProvider({
     const controller = new AbortController();
     let unsubscribeFromTheme = (): void => undefined;
 
-    setInitData("");
+    initDataRef.current = "";
     setStatus("initializing");
 
     void initializeTelegramWebApp({
@@ -79,7 +80,7 @@ export function TelegramProvider({
           updateTheme,
         );
         logTelegramDevelopmentDiagnostics(result.diagnostics);
-        setInitData(result.initData);
+        initDataRef.current = result.initData;
         setStatus(
           allowDevelopmentMock && result.status !== "ready"
             ? "development-mock"
@@ -96,7 +97,7 @@ export function TelegramProvider({
           hasInitData: false,
           hasUserField: false,
         });
-        setInitData("");
+        initDataRef.current = "";
         setStatus(
           allowDevelopmentMock ? "development-mock" : "browser",
         );
@@ -108,8 +109,9 @@ export function TelegramProvider({
     };
   }, [allowDevelopmentMock, initializationVersion]);
 
+  const readInitData = useCallback(() => initDataRef.current, []);
   const retryInitialization = useCallback(() => {
-    setInitData("");
+    initDataRef.current = "";
     setStatus("initializing");
     setInitializationVersion((version) => version + 1);
   }, []);
@@ -122,16 +124,16 @@ export function TelegramProvider({
 
   const value = useMemo(
     () => ({
-      initData,
       initializationError,
       isReady,
+      readInitData,
       retryInitialization,
       status,
     }),
     [
-      initData,
       initializationError,
       isReady,
+      readInitData,
       retryInitialization,
       status,
     ],

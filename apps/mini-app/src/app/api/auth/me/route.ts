@@ -23,7 +23,7 @@ export function GET(request: Request): NextResponse {
         "Cache-Control": "private, no-store",
       },
     });
-  } catch (error) {
-    return createAuthenticationErrorResponse(error);
+  } catch {
+    return createAuthenticationErrorResponse();
   }
 }

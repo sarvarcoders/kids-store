@@ -69,7 +69,7 @@ void test("invalid hashni rad etadi", () => {
       }),
     (error: unknown) =>
       error instanceof TelegramInitDataError &&
-      error.code === "INVALID_HASH",
+      error.reasonCode === "invalid_hash",
   );
 });
 
@@ -86,7 +86,7 @@ void test("bir soatdan eski auth_dateni rad etadi", () => {
       }),
     (error: unknown) =>
       error instanceof TelegramInitDataError &&
-      error.code === "EXPIRED_AUTH_DATE",
+      error.reasonCode === "expired_auth_date",
   );
 });
 
@@ -103,6 +103,92 @@ void test("user maydoni bo‘lmagan initDatani rad etadi", () => {
       }),
     (error: unknown) =>
       error instanceof TelegramInitDataError &&
-      error.code === "MISSING_USER",
+      error.reasonCode === "missing_user",
+  );
+});
+
+void test("duplicate parametrni alohida sabab bilan rad etadi", () => {
+  const initData = signInitData({
+    auth_date: String(NOW_SECONDS),
+    user: JSON.stringify(user),
+  });
+
+  assert.throws(
+    () =>
+      validateTelegramInitData(
+        `${initData}&user=${encodeURIComponent(JSON.stringify(user))}`,
+        BOT_TOKEN,
+        { nowSeconds: NOW_SECONDS },
+      ),
+    (error: unknown) =>
+      error instanceof TelegramInitDataError &&
+      error.reasonCode === "duplicate_parameter",
+  );
+});
+
+void test("hash bo‘lmasa missing_hash qaytaradi", () => {
+  const params = new URLSearchParams({
+    auth_date: String(NOW_SECONDS),
+    user: JSON.stringify(user),
+  });
+
+  assert.throws(
+    () =>
+      validateTelegramInitData(params.toString(), BOT_TOKEN, {
+        nowSeconds: NOW_SECONDS,
+      }),
+    (error: unknown) =>
+      error instanceof TelegramInitDataError &&
+      error.reasonCode === "missing_hash",
+  );
+});
+
+void test("auth_date bo‘lmasa missing_auth_date qaytaradi", () => {
+  const initData = signInitData({
+    user: JSON.stringify(user),
+  });
+
+  assert.throws(
+    () =>
+      validateTelegramInitData(initData, BOT_TOKEN, {
+        nowSeconds: NOW_SECONDS,
+      }),
+    (error: unknown) =>
+      error instanceof TelegramInitDataError &&
+      error.reasonCode === "missing_auth_date",
+  );
+});
+
+void test("kelajakdagi auth_dateni alohida rad etadi", () => {
+  const initData = signInitData({
+    auth_date: String(NOW_SECONDS + 31),
+    user: JSON.stringify(user),
+  });
+
+  assert.throws(
+    () =>
+      validateTelegramInitData(initData, BOT_TOKEN, {
+        nowSeconds: NOW_SECONDS,
+      }),
+    (error: unknown) =>
+      error instanceof TelegramInitDataError &&
+      error.reasonCode === "future_auth_date",
+  );
+});
+
+void test("noto‘g‘ri user JSONni alohida rad etadi", () => {
+  const initData = signInitData({
+    auth_date: String(NOW_SECONDS),
+    user: "{invalid-json",
+  });
+
+  assert.throws(
+    () =>
+      validateTelegramInitData(initData, BOT_TOKEN, {
+        nowSeconds: NOW_SECONDS,
+      }),
+    (error: unknown) =>
+      error instanceof TelegramInitDataError &&
+      error.reasonCode === "invalid_user_json",
   );
 });

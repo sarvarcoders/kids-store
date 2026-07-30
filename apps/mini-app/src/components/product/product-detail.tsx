@@ -36,9 +36,9 @@ export function ProductDetail({
 }): ReactNode {
   const router = useRouter();
   const {
-    initData,
     initializationError,
     isReady,
+    readInitData,
     retryInitialization,
   } = useTelegram();
   const [product, setProduct] = useState<ProductDetailDto | null>(null);
@@ -71,7 +71,7 @@ export function ProductDetail({
       try {
         const response = await fetchMiniAppApi(
           `/api/products/${encodeURIComponent(productId)}`,
-          initData,
+          readInitData,
           productDetailResponseSchema,
           controller.signal,
         );
@@ -94,7 +94,7 @@ export function ProductDetail({
     return () => {
       controller.abort();
     };
-  }, [initData, isReady, productId, retryVersion]);
+  }, [isReady, productId, readInitData, retryVersion]);
 
   const uniqueSizes = useMemo(
     () =>

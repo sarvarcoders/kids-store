@@ -4,7 +4,9 @@ import {
 } from "@kids-store/shared";
 import type { ZodType } from "zod";
 
-const TELEGRAM_INIT_DATA_HEADER = "x-telegram-init-data";
+export const TELEGRAM_INIT_DATA_HEADER = "x-telegram-init-data";
+
+export type TelegramInitDataSource = string | (() => string);
 
 export class ApiClientError extends Error {
   readonly status: number;
@@ -18,10 +20,14 @@ export class ApiClientError extends Error {
 
 export async function fetchMiniAppApi<T>(
   path: string,
-  initData: string,
+  initDataSource: TelegramInitDataSource,
   schema: ZodType<T>,
   signal?: AbortSignal,
 ): Promise<T> {
+  const initData =
+    typeof initDataSource === "function"
+      ? initDataSource()
+      : initDataSource;
   const headers = new Headers({
     Accept: "application/json",
   });
