@@ -5,6 +5,7 @@ import tseslint from "typescript-eslint";
 export default defineConfig(
   {
     ignores: [
+      "**/.next/**",
       "**/dist/**",
       "**/node_modules/**",
       "packages/database/src/generated/**",
@@ -12,7 +13,7 @@ export default defineConfig(
   },
   {
     files: [
-      "apps/**/*.ts",
+      "apps/**/*.{ts,tsx}",
       "packages/*/src/**/*.ts",
       "packages/*/prisma/**/*.ts",
     ],

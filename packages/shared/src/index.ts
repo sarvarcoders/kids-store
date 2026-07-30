@@ -1,4 +1,37 @@
 export {
+  apiErrorResponseSchema,
+  categoryDtoSchema,
+  categoryListResponseSchema,
+  paginationDtoSchema,
+  productDetailDtoSchema,
+  productDetailResponseSchema,
+  productIdSchema,
+  productImageDtoSchema,
+  productListItemDtoSchema,
+  productListResponseSchema,
+  productQuerySchema,
+  productVariantDtoSchema,
+  type ApiErrorResponse,
+  type CategoryDto,
+  type CategoryListResponse,
+  type PaginationDto,
+  type ProductDetailDto,
+  type ProductDetailResponse,
+  type ProductImageDto,
+  type ProductListItemDto,
+  type ProductListResponse,
+  type ProductQuery,
+  type ProductVariantDto,
+} from "./catalog/catalog.schema.js";
+export {
+  authSessionResponseSchema,
+  telegramWebAppUserSchema,
+  verifiedTelegramUserDtoSchema,
+  type AuthSessionResponse,
+  type TelegramWebAppUser,
+  type VerifiedTelegramUserDto,
+} from "./telegram/telegram-web-app.schema.js";
+export {
   addressSchema,
   type Address,
 } from "./validators/address.validator.js";
