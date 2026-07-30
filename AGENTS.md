@@ -89,3 +89,19 @@ silently skipping it.
 - `pnpm db:migrate`
 - `pnpm db:deploy`
 - `pnpm db:studio`
+
+
+## Git workflow
+
+Har bir muvaffaqiyatli vazifa yakunida:
+
+1. `git status` bilan o‘zgarishlarni tekshir.
+2. Faqat ushbu vazifaga tegishli fayllarni stage qil.
+3. Typecheck, lint, test va kerakli build muvaffaqiyatli o‘tganidan keyin commit qil.
+4. Commit xabari Conventional Commits formatida bo‘lsin.
+5. Joriy branchni `origin`ga push qil.
+6. Push muvaffaqiyatsiz bo‘lsa, xatoni yashirma va hisobotda ko‘rsat.
+7. `.env`, token, parol, generated Prisma Client yoki boshqa maxfiy fayllarni hech qachon stage yoki commit qilma.
+8. Boshqa foydalanuvchining unrelated o‘zgarishlarini commit qilma.
+9. `main` branchga force push qilma.
+10. Yakuniy hisobotda commit hash, commit xabari, branch va push holatini ko‘rsat.
