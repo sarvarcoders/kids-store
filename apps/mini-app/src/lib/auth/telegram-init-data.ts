@@ -35,7 +35,8 @@ export type TelegramAuthReasonCode =
   | "expired_auth_date"
   | "future_auth_date"
   | "missing_user"
-  | "invalid_user_json";
+  | "invalid_user_json"
+  | "invalid_user_schema";
 
 export type TelegramInitDataFailureReasonCode = Exclude<
   TelegramAuthReasonCode,
@@ -44,10 +45,14 @@ export type TelegramInitDataFailureReasonCode = Exclude<
 
 export class TelegramInitDataError extends Error {
   readonly reasonCode: TelegramInitDataFailureReasonCode;
+  readonly userValidationDiagnostics:
+    | TelegramUserValidationDiagnostics
+    | undefined;
 
   constructor(
     reasonCode: TelegramInitDataFailureReasonCode,
     cause?: unknown,
+    userValidationDiagnostics?: TelegramUserValidationDiagnostics,
   ) {
     super(
       "Telegram autentifikatsiyasi tasdiqlanmadi.",
@@ -55,13 +60,21 @@ export class TelegramInitDataError extends Error {
     );
     this.name = "TelegramInitDataError";
     this.reasonCode = reasonCode;
+    this.userValidationDiagnostics = userValidationDiagnostics;
   }
+}
+
+export interface TelegramUserValidationDiagnostics {
+  userJsonParseSucceeded: boolean;
+  userSchemaSucceeded: boolean;
+  userParameterLength: number;
 }
 
 export interface ValidatedTelegramInitData {
   authDate: Date;
   queryId: string | null;
   user: TelegramWebAppUser;
+  userValidationDiagnostics: TelegramUserValidationDiagnostics;
 }
 
 function parseUniqueParams(rawInitData: string): URLSearchParams {
@@ -185,15 +198,46 @@ export function validateTelegramInitData(
     throw new TelegramInitDataError("missing_user");
   }
 
-  try {
-    const user = telegramWebAppUserSchema.parse(JSON.parse(rawUser));
+  let parsedUserJson: unknown;
 
-    return {
-      authDate: new Date(parsedAuthDate.data * 1_000),
-      queryId: params.get("query_id"),
-      user,
-    };
+  try {
+    parsedUserJson = JSON.parse(rawUser) as unknown;
   } catch (error) {
-    throw new TelegramInitDataError("invalid_user_json", error);
+    throw new TelegramInitDataError(
+      "invalid_user_json",
+      error,
+      {
+        userJsonParseSucceeded: false,
+        userSchemaSucceeded: false,
+        userParameterLength: rawUser.length,
+      },
+    );
   }
+
+  const parsedUser = telegramWebAppUserSchema.safeParse(parsedUserJson);
+
+  if (!parsedUser.success) {
+    throw new TelegramInitDataError(
+      "invalid_user_schema",
+      parsedUser.error,
+      {
+        userJsonParseSucceeded: true,
+        userSchemaSucceeded: false,
+        userParameterLength: rawUser.length,
+      },
+    );
+  }
+
+  const userValidationDiagnostics = {
+    userJsonParseSucceeded: true,
+    userSchemaSucceeded: true,
+    userParameterLength: rawUser.length,
+  } satisfies TelegramUserValidationDiagnostics;
+
+  return {
+    authDate: new Date(parsedAuthDate.data * 1_000),
+    queryId: params.get("query_id"),
+    user: parsedUser.data,
+    userValidationDiagnostics,
+  };
 }

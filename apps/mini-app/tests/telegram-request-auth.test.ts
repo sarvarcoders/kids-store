@@ -10,19 +10,33 @@ import {
 } from "../src/lib/auth/request-auth-core.js";
 
 const BOT_TOKEN = "123456789:test_bot_token_for_request_tests";
-const OTHER_BOT_TOKEN = "987654321:other_bot_token_for_request_tests";
+const OTHER_BOT_TOKEN =
+  "987654321:other_bot_token_for_request_tests";
 const NOW_SECONDS = 1_800_000_000;
 const testUser = {
   id: 123_456_789,
-  first_name: "Test",
+  is_bot: false,
+  first_name: "Test O‘g‘li",
+  last_name: "User",
   username: "test_user",
+  language_code: "uz",
+  is_premium: true,
+  photo_url: "https://example.com/test-user.jpeg",
+  added_to_attachment_menu: true,
+  allows_write_to_pm: true,
+  future_safe_field: "must-not-leak",
 };
 
-function signInitData(): string {
+function signInitData(
+  userValue: unknown = testUser,
+): string {
   const params = new URLSearchParams({
     auth_date: String(NOW_SECONDS),
     query_id: "test-query",
-    user: JSON.stringify(testUser),
+    user:
+      typeof userValue === "string"
+        ? userValue
+        : JSON.stringify(userValue),
   });
   const dataCheckString = Array.from(params.entries())
     .sort(([firstKey], [secondKey]) =>
@@ -81,17 +95,14 @@ void test("header mavjud bo‘lmasa bitta safe log yozadi", () => {
     attempt.authenticate,
     MiniAppAuthenticationError,
   );
-  assert.equal(attempt.logs.length, 1);
-  assert.deepEqual(attempt.logs[0], {
-    event: "telegram_auth",
-    path: "/api/auth/me",
-    headerPresent: false,
-    initDataLength: 0,
-    hashPresent: false,
-    authDatePresent: false,
-    userParameterPresent: false,
-    reasonCode: "missing_header",
-  });
+  assert.deepEqual(attempt.logs, [
+    {
+      reasonCode: "missing_header",
+      userJsonParseSucceeded: false,
+      userSchemaSucceeded: false,
+      userParameterLength: 0,
+    },
+  ]);
 });
 
 void test("empty header alohida reasonCode qaytaradi", () => {
@@ -101,32 +112,43 @@ void test("empty header alohida reasonCode qaytaradi", () => {
     attempt.authenticate,
     MiniAppAuthenticationError,
   );
-  assert.equal(attempt.logs.length, 1);
-  const [entry] = attempt.logs;
-  assert.ok(entry);
-  assert.equal(entry.reasonCode, "empty_init_data");
-  assert.equal(entry.headerPresent, true);
-  assert.equal(entry.initDataLength, 0);
+  assert.deepEqual(attempt.logs, [
+    {
+      reasonCode: "empty_init_data",
+      userJsonParseSucceeded: false,
+      userSchemaSucceeded: false,
+      userParameterLength: 0,
+    },
+  ]);
 });
 
-void test("valid initData userni tasdiqlab bitta valid log yozadi", () => {
+void test("valid initData whitelist qilingan DTO va safe log qaytaradi", () => {
   const rawInitData = signInitData();
   const attempt = captureAuthentication(
     createAuthRequest(rawInitData),
   );
   const user = attempt.authenticate();
 
-  assert.equal(user.id, String(testUser.id));
-  assert.equal(user.isDevelopmentMock, false);
-  assert.equal(attempt.logs.length, 1);
-  const [entry] = attempt.logs;
-  assert.ok(entry);
-  assert.equal(entry.reasonCode, "valid");
-  assert.equal(entry.headerPresent, true);
-  assert.equal(entry.initDataLength, rawInitData.length);
-  assert.equal(entry.hashPresent, true);
-  assert.equal(entry.authDatePresent, true);
-  assert.equal(entry.userParameterPresent, true);
+  assert.deepEqual(user, {
+    id: String(testUser.id),
+    firstName: testUser.first_name,
+    lastName: testUser.last_name,
+    username: testUser.username,
+    languageCode: testUser.language_code,
+    isPremium: true,
+    photoUrl: testUser.photo_url,
+  });
+  assert.equal("future_safe_field" in user, false);
+  assert.equal("is_bot" in user, false);
+  assert.equal("added_to_attachment_menu" in user, false);
+  assert.deepEqual(attempt.logs, [
+    {
+      reasonCode: "valid",
+      userJsonParseSucceeded: true,
+      userSchemaSucceeded: true,
+      userParameterLength: JSON.stringify(testUser).length,
+    },
+  ]);
 });
 
 void test("boshqa bot tokeni invalid_hash qaytaradi", () => {
@@ -139,8 +161,57 @@ void test("boshqa bot tokeni invalid_hash qaytaradi", () => {
     attempt.authenticate,
     MiniAppAuthenticationError,
   );
-  assert.equal(attempt.logs.length, 1);
-  assert.equal(attempt.logs[0]?.reasonCode, "invalid_hash");
+  assert.deepEqual(attempt.logs, [
+    {
+      reasonCode: "invalid_hash",
+      userJsonParseSucceeded: false,
+      userSchemaSucceeded: false,
+      userParameterLength: JSON.stringify(testUser).length,
+    },
+  ]);
+});
+
+void test("malformed JSON parse diagnostikasini ajratadi", () => {
+  const rawUser = "{invalid-json";
+  const attempt = captureAuthentication(
+    createAuthRequest(signInitData(rawUser)),
+  );
+
+  assert.throws(
+    attempt.authenticate,
+    MiniAppAuthenticationError,
+  );
+  assert.deepEqual(attempt.logs, [
+    {
+      reasonCode: "invalid_user_json",
+      userJsonParseSucceeded: false,
+      userSchemaSucceeded: false,
+      userParameterLength: rawUser.length,
+    },
+  ]);
+});
+
+void test("invalid user schema diagnostikasini ajratadi", () => {
+  const invalidUser = {
+    id: "123",
+    first_name: "Invalid",
+  };
+  const attempt = captureAuthentication(
+    createAuthRequest(signInitData(invalidUser)),
+  );
+
+  assert.throws(
+    attempt.authenticate,
+    MiniAppAuthenticationError,
+  );
+  assert.deepEqual(attempt.logs, [
+    {
+      reasonCode: "invalid_user_schema",
+      userJsonParseSucceeded: true,
+      userSchemaSucceeded: false,
+      userParameterLength: JSON.stringify(invalidUser).length,
+    },
+  ]);
 });
 
 void test("raw initData bo‘lsa initDataUnsafe.user talab qilinmaydi", () => {

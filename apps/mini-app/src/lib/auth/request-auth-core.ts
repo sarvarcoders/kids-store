@@ -15,14 +15,10 @@ const GENERIC_AUTHENTICATION_MESSAGE =
   "Telegram autentifikatsiyasi bajarilmadi.";
 
 export interface TelegramAuthLogEntry {
-  event: "telegram_auth";
-  path: string;
   reasonCode: TelegramAuthReasonCode;
-  headerPresent: boolean;
-  initDataLength: number;
-  hashPresent: boolean;
-  authDatePresent: boolean;
-  userParameterPresent: boolean;
+  userJsonParseSucceeded: boolean;
+  userSchemaSucceeded: boolean;
+  userParameterLength: number;
 }
 
 interface AuthenticateTelegramRequestOptions {
@@ -48,27 +44,15 @@ function createDevelopmentMockUser(): VerifiedTelegramUserDto {
     username: "kids_store_dev",
     languageCode: "uz",
     isPremium: false,
-    isDevelopmentMock: true,
   });
 }
 
-function inspectInitData(
-  request: Request,
-  rawInitData: string | null,
-): Omit<TelegramAuthLogEntry, "event" | "reasonCode"> {
-  const params =
-    rawInitData === null || rawInitData.length === 0
-      ? null
-      : new URLSearchParams(rawInitData);
+function getUserParameterLength(rawInitData: string | null): number {
+  if (rawInitData === null || rawInitData.length === 0) {
+    return 0;
+  }
 
-  return {
-    path: new URL(request.url).pathname,
-    headerPresent: rawInitData !== null,
-    initDataLength: rawInitData?.length ?? 0,
-    hashPresent: params?.has("hash") ?? false,
-    authDatePresent: params?.has("auth_date") ?? false,
-    userParameterPresent: params?.has("user") ?? false,
-  };
+  return new URLSearchParams(rawInitData).get("user")?.length ?? 0;
 }
 
 function writeTelegramAuthLog(entry: TelegramAuthLogEntry): void {
@@ -81,9 +65,11 @@ export function authenticateTelegramRequest(
   options: AuthenticateTelegramRequestOptions = {},
 ): VerifiedTelegramUserDto {
   const rawInitData = request.headers.get(TELEGRAM_INIT_DATA_HEADER);
-  const diagnostics = inspectInitData(request, rawInitData);
   const log = options.log ?? writeTelegramAuthLog;
-  let reasonCode: TelegramAuthReasonCode = "invalid_user_json";
+  let reasonCode: TelegramAuthReasonCode = "invalid_user_schema";
+  let userJsonParseSucceeded = false;
+  let userSchemaSucceeded = false;
+  let userParameterLength = getUserParameterLength(rawInitData);
 
   try {
     if (rawInitData === null) {
@@ -114,22 +100,35 @@ export function authenticateTelegramRequest(
         : { nowSeconds: options.nowSeconds },
     );
     const user = validated.user;
+    userJsonParseSucceeded =
+      validated.userValidationDiagnostics.userJsonParseSucceeded;
+    userSchemaSucceeded =
+      validated.userValidationDiagnostics.userSchemaSucceeded;
+    userParameterLength =
+      validated.userValidationDiagnostics.userParameterLength;
+    const normalizeOptionalText = (
+      value: string | undefined,
+    ): string | undefined => {
+      const normalized = value?.trim();
+      return normalized && normalized.length > 0
+        ? normalized
+        : undefined;
+    };
+    const lastName = normalizeOptionalText(user.last_name);
+    const username = normalizeOptionalText(user.username);
+    const languageCode = normalizeOptionalText(user.language_code);
     const verifiedUser = verifiedTelegramUserDtoSchema.parse({
       id: String(user.id),
-      firstName: user.first_name,
-      ...(user.last_name === undefined
-        ? {}
-        : { lastName: user.last_name }),
-      ...(user.username === undefined
-        ? {}
-        : { username: user.username }),
-      ...(user.language_code === undefined
-        ? {}
-        : { languageCode: user.language_code }),
+      firstName: user.first_name.trim(),
+      ...(lastName === undefined ? {} : { lastName }),
+      ...(username === undefined ? {} : { username }),
+      ...(languageCode === undefined ? {} : { languageCode }),
       ...(user.is_premium === undefined
         ? {}
         : { isPremium: user.is_premium }),
-      isDevelopmentMock: false,
+      ...(user.photo_url === undefined
+        ? {}
+        : { photoUrl: user.photo_url }),
     });
 
     reasonCode = "valid";
@@ -137,6 +136,14 @@ export function authenticateTelegramRequest(
   } catch (error) {
     if (error instanceof TelegramInitDataError) {
       reasonCode = error.reasonCode;
+      if (error.userValidationDiagnostics) {
+        userJsonParseSucceeded =
+          error.userValidationDiagnostics.userJsonParseSucceeded;
+        userSchemaSucceeded =
+          error.userValidationDiagnostics.userSchemaSucceeded;
+        userParameterLength =
+          error.userValidationDiagnostics.userParameterLength;
+      }
     }
 
     if (error instanceof MiniAppAuthenticationError) {
@@ -146,14 +153,10 @@ export function authenticateTelegramRequest(
     throw new MiniAppAuthenticationError(error);
   } finally {
     log({
-      event: "telegram_auth",
-      path: diagnostics.path,
       reasonCode,
-      headerPresent: diagnostics.headerPresent,
-      initDataLength: diagnostics.initDataLength,
-      hashPresent: diagnostics.hashPresent,
-      authDatePresent: diagnostics.authDatePresent,
-      userParameterPresent: diagnostics.userParameterPresent,
+      userJsonParseSucceeded,
+      userSchemaSucceeded,
+      userParameterLength,
     });
   }
 }
