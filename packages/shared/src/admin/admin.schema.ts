@@ -41,13 +41,10 @@ export const adminProductImageInputSchema = z.object({
   sortOrder: z.coerce.number().int().min(0).max(7),
   url: z
     .url()
-    .refine((value) => value.startsWith("https://"))
+    .max(2_048)
     .refine(
-      (value) =>
-        /^https:\/\/(?:placehold\.co|images\.unsplash\.com)(?::443)?(?:\/|$)/i.test(
-          value,
-        ),
-      "Rasm domeniga ruxsat berilmagan",
+      (value) => value.startsWith("https://"),
+      "Rasm URL HTTPS bo‘lishi kerak",
     ),
 });
 
@@ -94,7 +91,10 @@ export const adminProductInputSchema = z
         .nullable(),
     ),
     isActive: z.boolean(),
-    images: z.array(adminProductImageInputSchema).max(8),
+    images: z
+      .array(adminProductImageInputSchema)
+      .min(1, "Kamida bitta rasm yuklang")
+      .max(8),
     variants: z.array(adminProductVariantInputSchema).min(1).max(100),
   })
   .superRefine((value, context) => {

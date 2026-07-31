@@ -87,6 +87,24 @@ void test("legacy filter javobi compact catalog DTOga o‘tkaziladi", () => {
   assert.equal(compact.categoryName, product.category.name);
 });
 
+void test("Supabase Storage rasmi catalog va detail DTOda saqlanadi", () => {
+  const uploadedImageUrl =
+    "https://example-project.supabase.co/storage/v1/object/public/product-images/products/1/image.webp";
+  const withUploadedImage: ProductDetailRecord = {
+    ...product,
+    images: [
+      {
+        id: 9,
+        url: uploadedImageUrl,
+        sortOrder: 0,
+      },
+    ],
+  };
+
+  assert.equal(formatCatalogProduct(withUploadedImage).imageUrl, uploadedImageUrl);
+  assert.equal(formatProductDetail(withUploadedImage).images[0]?.url, uploadedImageUrl);
+});
+
 void test("1000 ta catalog DTO formatlash lokal performance budjetida qoladi", () => {
   const startedAt = performance.now();
 

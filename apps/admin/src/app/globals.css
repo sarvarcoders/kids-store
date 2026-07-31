@@ -276,6 +276,7 @@ button:disabled {
 .primary-button,
 .secondary-button,
 .danger-button,
+.publish-button,
 .table-action {
   border: 0;
   border-radius: 11px;
@@ -293,7 +294,8 @@ button:disabled {
 
 .primary-button,
 .secondary-button,
-.danger-button {
+.danger-button,
+.publish-button {
   display: inline-flex;
   min-height: 42px;
   align-items: center;
@@ -319,6 +321,14 @@ button:disabled {
 .danger-button {
   background: color-mix(in srgb, var(--danger) 10%, transparent);
   color: var(--danger);
+}
+
+.publish-button {
+  border: 0;
+  border-radius: 11px;
+  background: #16835d;
+  color: #fff;
+  font-weight: 800;
 }
 
 .menu-button {
@@ -705,6 +715,193 @@ textarea {
   grid-template-columns: minmax(200px, 1fr) 100px auto;
 }
 
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  clip-path: inset(50%) !important;
+}
+
+.image-uploader,
+.upload-list {
+  display: grid;
+  gap: 14px;
+}
+
+.image-upload-actions,
+.image-preview-actions,
+.manual-image-url,
+.form-success {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.upload-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.5fr);
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+
+.upload-item strong,
+.upload-item small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-item small {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.upload-item progress {
+  width: 100%;
+  accent-color: var(--brand);
+}
+
+.image-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.image-preview-grid > li {
+  display: grid;
+  gap: 8px;
+}
+
+.image-preview {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 5;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--surface-muted);
+}
+
+.image-preview img {
+  object-fit: cover;
+}
+
+.image-preview > span {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.78);
+  color: white;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.image-preview-actions {
+  justify-content: center;
+}
+
+.image-preview-actions .secondary-button,
+.image-preview-actions .danger-button {
+  min-height: 36px;
+  padding: 0 11px;
+  font-size: 0.75rem;
+}
+
+.image-empty-state {
+  display: grid;
+  min-height: 180px;
+  padding: 24px;
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  color: var(--muted);
+  text-align: center;
+  place-content: center;
+}
+
+.image-empty-state > span {
+  font-size: 2rem;
+}
+
+.image-empty-state strong {
+  margin-top: 8px;
+  color: var(--text);
+}
+
+.image-empty-state p {
+  margin: 5px 0 0;
+}
+
+.text-button {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--brand);
+  font-weight: 750;
+}
+
+.manual-image-url {
+  align-items: end;
+}
+
+.manual-image-url label {
+  flex: 1;
+}
+
+.form-success {
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(26, 164, 112, 0.12);
+  color: #16835d;
+  font-weight: 700;
+}
+
+.form-success a {
+  text-decoration: underline;
+}
+
+.channel-preview-card {
+  display: grid;
+  gap: 7px;
+  max-width: 540px;
+  padding: 18px;
+  border-radius: 17px;
+  background: var(--surface-muted);
+}
+
+.channel-preview-card strong {
+  font-size: 1.08rem;
+}
+
+.channel-preview-card span,
+.channel-preview-card small,
+.channel-preview-card em,
+.channel-preview-card s {
+  color: var(--muted);
+}
+
+.channel-preview-card p {
+  margin: 3px 0;
+  line-height: 1.5;
+}
+
+.channel-preview-card b {
+  color: var(--brand);
+  font-size: 1.05rem;
+}
+
 .form-actions {
   justify-content: flex-end;
   gap: 10px;
@@ -921,6 +1118,32 @@ textarea {
   .repeat-row,
   .image-row {
     grid-template-columns: 1fr;
+  }
+
+  .image-upload-actions,
+  .manual-image-url,
+  .form-success {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .image-upload-actions > button,
+  .manual-image-url > button,
+  .form-actions > button {
+    width: 100%;
+  }
+
+  .image-preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .upload-item {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
   }
 
   .panel,

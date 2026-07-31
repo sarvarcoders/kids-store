@@ -33,6 +33,11 @@ interface AdminAuthContextValue {
       idempotent?: boolean;
     },
   ) => Promise<T>;
+  upload: <T>(
+    path: string,
+    body: FormData,
+    onProgress?: (percent: number) => void,
+  ) => Promise<T>;
   logout: () => Promise<void>;
 }
 
@@ -42,6 +47,44 @@ const AdminAuthContext = createContext<AdminAuthContextValue | null>(
 
 function createIdempotencyKey(): string {
   return crypto.randomUUID().replaceAll("-", "");
+}
+
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getApiErrorMessage(payload: unknown): string {
+  if (isUnknownRecord(payload) && isUnknownRecord(payload.error)) {
+    const error = payload.error;
+
+    if (
+      Array.isArray(error.fields) &&
+      error.fields.length > 0
+    ) {
+      const firstField: unknown = error.fields[0];
+
+      if (
+        isUnknownRecord(firstField) &&
+        typeof firstField.message === "string"
+      ) {
+        return firstField.message;
+      }
+    }
+
+    if (typeof error.message === "string") {
+      return error.message;
+    }
+  }
+
+  return "Amalni bajarib bo‘lmadi.";
+}
+
+function parseResponsePayload(value: string): unknown {
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return null;
+  }
 }
 
 export function AdminAuthProvider({
@@ -117,21 +160,56 @@ export function AdminAuthProvider({
       const payload: unknown = await response.json();
 
       if (!response.ok) {
-        const message =
-          typeof payload === "object" &&
-          payload !== null &&
-          "error" in payload &&
-          typeof payload.error === "object" &&
-          payload.error !== null &&
-          "message" in payload.error &&
-          typeof payload.error.message === "string"
-            ? payload.error.message
-            : "Amalni bajarib bo‘lmadi.";
-
-        throw new Error(message);
+        throw new Error(getApiErrorMessage(payload));
       }
 
       return payload as T;
+    },
+    [csrfToken],
+  );
+
+  const upload = useCallback(
+    async <T,>(
+      path: string,
+      body: FormData,
+      onProgress?: (percent: number) => void,
+    ): Promise<T> => {
+      if (!csrfToken) {
+        throw new Error("Admin sessiyasi hali tayyor emas.");
+      }
+
+      return new Promise<T>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", path);
+        xhr.timeout = 120_000;
+        xhr.withCredentials = true;
+        xhr.setRequestHeader("Accept", "application/json");
+        xhr.setRequestHeader("x-admin-csrf-token", csrfToken);
+        xhr.upload.addEventListener("progress", (event) => {
+          if (event.lengthComputable) {
+            onProgress?.(
+              Math.min(100, Math.round((event.loaded / event.total) * 100)),
+            );
+          }
+        });
+        xhr.addEventListener("load", () => {
+          const payload = parseResponsePayload(xhr.responseText);
+
+          if (xhr.status < 200 || xhr.status >= 300) {
+            reject(new Error(getApiErrorMessage(payload)));
+            return;
+          }
+
+          resolve(payload as T);
+        });
+        xhr.addEventListener("error", () => {
+          reject(new Error("Rasmni yuborishda tarmoq xatosi yuz berdi."));
+        });
+        xhr.addEventListener("timeout", () => {
+          reject(new Error("Rasm yuklash vaqti tugadi. Qayta urinib ko‘ring."));
+        });
+        xhr.send(body);
+      });
     },
     [csrfToken],
   );
@@ -144,8 +222,8 @@ export function AdminAuthProvider({
   }, [request]);
 
   const value = useMemo(
-    () => ({ admin, request, logout }),
-    [admin, logout, request],
+    () => ({ admin, request, upload, logout }),
+    [admin, logout, request, upload],
   );
 
   return (

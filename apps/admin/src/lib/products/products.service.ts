@@ -10,7 +10,12 @@ import {
 import { z } from "zod";
 
 import { createAdminAuditLog } from "../audit/audit.service";
+import { getProductImageStorageEnv } from "../env/server";
 import { AdminServiceError } from "../errors/admin-service-error";
+import {
+  isAllowedProductImageUrl,
+  isLegacyProductImageUrl,
+} from "../storage/product-image-policy";
 import {
   getProductActivationChange,
   getRemovedVariantStrategy,
@@ -19,6 +24,47 @@ import {
 
 const productIdSchema = z.coerce.number().int().positive();
 const adminIdSchema = z.string().regex(/^[1-9]\d*$/);
+
+function assertProductImageUrlsAllowed(
+  images: AdminProductInput["images"],
+): void {
+  const storageImages = images.filter(
+    (image) => !isLegacyProductImageUrl(image.url),
+  );
+
+  if (storageImages.length === 0) {
+    return;
+  }
+
+  let env: ReturnType<typeof getProductImageStorageEnv>;
+
+  try {
+    env = getProductImageStorageEnv();
+  } catch (error) {
+    throw new AdminServiceError(
+      "STORAGE_NOT_CONFIGURED",
+      "Rasm ombori sozlanmagan. Administratorga murojaat qiling.",
+      409,
+      error,
+    );
+  }
+  const invalidImage = storageImages.find(
+    (image) =>
+      !isAllowedProductImageUrl({
+        publicUrl: image.url,
+        supabaseUrl: env.SUPABASE_URL,
+        bucket: env.SUPABASE_STORAGE_BUCKET,
+      }),
+  );
+
+  if (invalidImage) {
+    throw new AdminServiceError(
+      "IMAGE_URL_NOT_ALLOWED",
+      "Rasm faqat mahsulotlar omboridan yoki ruxsat berilgan manbadan bo‘lishi kerak.",
+      400,
+    );
+  }
+}
 
 function mapProductWriteError(error: unknown): never {
   if (isPrismaUniqueConstraintError(error)) {
@@ -247,6 +293,7 @@ export async function createAdminProduct(
   const adminTelegramId = adminIdSchema.parse(adminTelegramIdInput);
   const productInput: AdminProductInput =
     adminProductInputSchema.parse(input);
+  assertProductImageUrlsAllowed(productInput.images);
 
   try {
     return await prisma.$transaction(async (transaction) => {
@@ -314,6 +361,7 @@ export async function updateAdminProduct(
   const productId = productIdSchema.parse(productIdInput);
   const productInput: AdminProductInput =
     adminProductInputSchema.parse(input);
+  assertProductImageUrlsAllowed(productInput.images);
 
   try {
     return await prisma.$transaction(async (transaction) => {

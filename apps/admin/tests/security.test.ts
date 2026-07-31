@@ -53,13 +53,15 @@ void test("client komponentlarda server secret nomlari ishlatilmaydi", () => {
     "../src/components/auth/admin-auth-provider.tsx",
     "../src/components/auth/login-panel.tsx",
     "../src/components/layout/admin-shell.tsx",
+    "../src/components/products/product-editor.tsx",
+    "../src/components/products/product-image-uploader.tsx",
   ];
 
   files.forEach((file) => {
     const source = readFileSync(new URL(file, import.meta.url), "utf8");
     assert.doesNotMatch(
       source,
-      /TELEGRAM_BOT_TOKEN|DATABASE_URL|DIRECT_URL|ADMIN_SESSION_SECRET/,
+      /TELEGRAM_BOT_TOKEN|DATABASE_URL|DIRECT_URL|ADMIN_SESSION_SECRET|SUPABASE_SERVICE_ROLE_KEY/,
     );
   });
 });

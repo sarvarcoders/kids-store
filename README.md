@@ -89,6 +89,8 @@ ADMIN_TELEGRAM_ID=
 DATABASE_URL=
 NEXT_PUBLIC_MINI_APP_URL=http://localhost:3000
 MINI_APP_DEV_MODE=true
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_STORAGE_BUCKET=product-images
 ```
 
 ```bash
@@ -99,6 +101,10 @@ Mini App raw `Telegram.WebApp.initData`ni serverga yuboradi. Server Telegram
 hash, `auth_date` va user JSON’ni tekshiradi. `initDataUnsafe` auth manbasi
 emas. Mock user faqat `NODE_ENV=development` va `MINI_APP_DEV_MODE=true`
 bo‘lganda ishlaydi; production’da bypass yopiq.
+
+Mini App Vercel environmentida `SUPABASE_URL` va
+`SUPABASE_STORAGE_BUCKET` Next Image allowlistini build vaqtida aniq bucket
+host/path bilan cheklaydi. `SUPABASE_SERVICE_ROLE_KEY` Mini App’ga kerak emas.
 
 Mini App katalog, persistent cart, checkout va order history’ni taqdim etadi.
 Checkout narx va stockni database’dan transaction ichida qayta o‘qiydi,
@@ -172,6 +178,9 @@ TELEGRAM_BOT_USERNAME=
 ADMIN_TELEGRAM_IDS=123456789,987654321
 ADMIN_SESSION_SECRET=
 NEXT_PUBLIC_ADMIN_URL=http://localhost:3001
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_STORAGE_BUCKET=product-images
 ```
 
 `ADMIN_SESSION_SECRET` kamida 32 belgili, tasodifiy va production uchun alohida
@@ -192,16 +201,30 @@ kirish o‘rniga admin panelni botdagi alohida Telegram Web App tugmasidan
 oching. Keyingi browser auth SSO yoki passkey bilan alohida xavfsizlik auditi
 asosida rejalashtiriladi.
 
-Rasm boshqaruvi HTTPS URL’ni saqlaydi, tashqi URL’ni serverdan fetch qilmaydi.
-MVP allowlisti `placehold.co` va `images.unsplash.com` hostlari bilan
-cheklangan.
+Mahsulot yaratishda admin telefondan 1–8 ta JPEG, PNG yoki WebP rasm tanlaydi.
+Brauzer rasmni eng katta tomoni 1600px bo‘lguncha kichraytirib WebP yoki
+optimallashtirilgan JPEG qiladi; server 3 MB limit, MIME va magic bytes’ni
+qayta tekshiradi. Fayl server-only service-role orqali public
+`product-images` bucket’iga
+`products/<product-id-yoki-temp>/<timestamp>-<random>.<format>` yo‘lida
+yuklanadi. Database faqat stable public HTTPS URL va `sortOrder`ni saqlaydi.
+
+`SUPABASE_SERVICE_ROLE_KEY` hech qachon `NEXT_PUBLIC_` prefiksi bilan
+berilmasin. Bucket mavjud bo‘lmasa birinchi upload uni public va image-only
+limitlar bilan yaratishga urinadi; mavjud bucket private bo‘lsa upload xavfsiz
+rad etiladi. Forma bekor qilinganda draft rasmlar tozalanadi. Brauzer kutilmagan
+yopilib qolgan holat uchun `products/temp/` obyektlarini vaqti-vaqti bilan
+Storage lifecycle yoki alohida maintenance job orqali tozalash tavsiya etiladi.
+Oldingi `placehold.co` va `images.unsplash.com` URL’lari backward compatibility
+uchun saqlanadi; yangi asosiy flow gallery/camera upload hisoblanadi.
 
 ### Vercel monorepo deploy
 
 1. Vercel project Root Directory qiymatini `apps/admin` qiling.
 2. `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`,
    `TELEGRAM_BOT_USERNAME`, `ADMIN_TELEGRAM_IDS` va kuchli
-   `ADMIN_SESSION_SECRET`ni server Environment Variables sifatida kiriting.
+   `ADMIN_SESSION_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` va
+   `SUPABASE_STORAGE_BUCKET`ni server Environment Variables sifatida kiriting.
 3. Faqat public URL’ni `NEXT_PUBLIC_ADMIN_URL` sifatida kiriting.
 4. Botdagi admin Web App tugmasini production HTTPS URL’ga ulang.
 5. `AdminAuditLog` migration production database’ga deploy qilinganidan keyin

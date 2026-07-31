@@ -72,6 +72,47 @@ void test("active va stockli productni publish qilib ChannelPost yozadi", async 
   assert.equal(writes.length, 1);
 });
 
+void test("Supabase Storage rasmi bilan photo post va deep link yuboradi", async () => {
+  const uploadedImageUrl =
+    "https://example-project.supabase.co/storage/v1/object/public/product-images/products/1/image.webp";
+  const { repository, writes } = createRepository({
+    ...product,
+    images: [{ url: uploadedImageUrl }],
+  });
+  let sentPhotoUrl = "";
+  let purchaseUrl = "";
+  const photoTelegram: ChannelTelegramGateway = {
+    ...telegram,
+    sendPhoto(_channelId, photoUrl, _caption, replyMarkup) {
+      sentPhotoUrl = photoUrl;
+      purchaseUrl = replyMarkup.inline_keyboard[0]?.[0]?.url ?? "";
+      return Promise.resolve({
+        message_id: 78,
+        chat: { id: -1001234567890 },
+      });
+    },
+  };
+
+  const result = await publishChannelProduct(
+    {
+      productId: 1,
+      channelId: "-1001234567890",
+      botUsername: "kids_store_bot",
+    },
+    photoTelegram,
+    undefined,
+    repository,
+  );
+
+  assert.equal(sentPhotoUrl, uploadedImageUrl);
+  assert.equal(
+    purchaseUrl,
+    "https://t.me/kids_store_bot?start=product_1",
+  );
+  assert.equal(result.sentWithPhoto, true);
+  assert.equal(writes.length, 1);
+});
+
 void test("inactive/topilmagan productni publish qilmaydi", async () => {
   const { repository } = createRepository(null);
 
