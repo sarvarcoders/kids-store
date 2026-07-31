@@ -1,4 +1,4 @@
-import { calculateEffectivePrice } from "@kids-store/shared";
+import { calculateEffectivePrice } from "@kids-store/shared/order-domain";
 import { z } from "zod";
 
 const POSTGRES_INTEGER_MAX = 2_147_483_647;

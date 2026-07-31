@@ -1,4 +1,3 @@
-import { prisma } from "@kids-store/database";
 import { z } from "zod";
 
 import {
@@ -104,6 +103,8 @@ interface PublishChannelProductInput {
 
 const prismaChannelPostRepository: ChannelPostRepository = {
   async findActiveProduct(productId) {
+    const { prisma } = await import("@kids-store/database");
+
     return prisma.product.findFirst({
       where: {
         id: productId,
@@ -146,6 +147,8 @@ const prismaChannelPostRepository: ChannelPostRepository = {
     });
   },
   async createChannelPost(input) {
+    const { prisma } = await import("@kids-store/database");
+
     await prisma.channelPost.create({
       data: input,
     });

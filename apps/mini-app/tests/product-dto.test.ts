@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import { performance } from "node:perf_hooks";
 import test from "node:test";
 
 import {
+  compactProductListItem,
+  formatCatalogProduct,
   formatProductDetail,
   formatProductListItem,
   type ProductDetailRecord,
@@ -55,4 +58,62 @@ void test("product detail DTO stocki tugagan variantni chiqarmaydi", () => {
   assert.equal(dto.variants.some((variant) => variant.stock === 0), false);
   assert.equal(dto.images.length, 2);
   assert.equal(dto.category.slug, "boys-clothing");
+});
+
+void test("catalog DTO nested va null maydonlarni payloadga chiqarmaydi", () => {
+  const compact = formatCatalogProduct(product);
+  const legacy = formatProductListItem(product);
+
+  assert.equal(compact.categoryName, product.category.name);
+  assert.equal(compact.imageUrl, product.images[0]?.url);
+  assert.equal("category" in compact, false);
+  assert.equal("primaryImage" in compact, false);
+  assert.ok(JSON.stringify(compact).length < JSON.stringify(legacy).length);
+
+  const withoutOptionalFields = formatCatalogProduct({
+    ...product,
+    discountPrice: null,
+    images: [],
+  });
+
+  assert.equal("discountPrice" in withoutOptionalFields, false);
+  assert.equal("imageUrl" in withoutOptionalFields, false);
+});
+
+void test("legacy filter javobi compact catalog DTOga o‘tkaziladi", () => {
+  const compact = compactProductListItem(formatProductListItem(product));
+
+  assert.deepEqual(compact.availableSizes, ["98", "104"]);
+  assert.equal(compact.categoryName, product.category.name);
+});
+
+void test("Supabase Storage rasmi catalog va detail DTOda saqlanadi", () => {
+  const uploadedImageUrl =
+    "https://example-project.supabase.co/storage/v1/object/public/product-images/products/1/image.webp";
+  const withUploadedImage: ProductDetailRecord = {
+    ...product,
+    images: [
+      {
+        id: 9,
+        url: uploadedImageUrl,
+        sortOrder: 0,
+      },
+    ],
+  };
+
+  assert.equal(formatCatalogProduct(withUploadedImage).imageUrl, uploadedImageUrl);
+  assert.equal(formatProductDetail(withUploadedImage).images[0]?.url, uploadedImageUrl);
+});
+
+void test("1000 ta catalog DTO formatlash lokal performance budjetida qoladi", () => {
+  const startedAt = performance.now();
+
+  for (let index = 0; index < 1_000; index += 1) {
+    formatCatalogProduct({
+      ...product,
+      id: index + 1,
+    });
+  }
+
+  assert.ok(performance.now() - startedAt < 1_000);
 });

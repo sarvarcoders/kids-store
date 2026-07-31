@@ -1,9 +1,23 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { useAdminAuth } from "@/components/auth/admin-auth-provider";
+import { ProductChannelPreview } from "@/components/products/product-channel-preview";
+import type { EditorProductImage } from "@/components/products/product-image-uploader";
+
+const ProductImageUploader = dynamic(
+  () =>
+    import("@/components/products/product-image-uploader").then(
+      (module) => module.ProductImageUploader,
+    ),
+  {
+    ssr: false,
+    loading: () => <p className="hint">Rasm yuklagich tayyorlanmoqda…</p>,
+  },
+);
 
 interface EditorProduct {
   id?: number;
@@ -15,17 +29,41 @@ interface EditorProduct {
   price: number;
   discountPrice: number | null;
   isActive: boolean;
-  images: {
-    id?: number;
-    url: string;
-    sortOrder: number;
-  }[];
+  images: EditorProductImage[];
   variants: {
     id?: number;
     size: string;
     color: string;
     stock: number;
   }[];
+}
+
+interface ProductMutationResponse {
+  data: {
+    id: number;
+    name: string;
+  };
+}
+
+interface PublishResponse {
+  data: {
+    telegramMessageId: number;
+    postUrl: string | null;
+  };
+}
+
+function slugifyProductName(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[‘’ʼʻ`']/g, "")
+    .toLocaleLowerCase("uz")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 200);
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
 }
 
 export function ProductEditor({
@@ -37,6 +75,7 @@ export function ProductEditor({
 }): React.ReactNode {
   const { request } = useAdminAuth();
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [product, setProduct] = useState<EditorProduct>(
     initialProduct ?? {
       code: "",
@@ -51,34 +90,136 @@ export function ProductEditor({
       variants: [{ size: "", color: "", stock: 0 }],
     },
   );
+  const [draftId] = useState(() => crypto.randomUUID());
+  const [productId, setProductId] = useState(initialProduct?.id);
+  const [persistedImageUrls, setPersistedImageUrls] = useState(
+    () => initialProduct?.images.map((image) => image.url) ?? [],
+  );
+  const [removedImageUrls, setRemovedImageUrls] = useState<string[]>([]);
+  const [slugEdited, setSlugEdited] = useState(
+    initialProduct !== undefined,
+  );
   const [busy, setBusy] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [postUrl, setPostUrl] = useState<string | null>(null);
 
-  const submit = async (
-    event: React.SyntheticEvent<HTMLFormElement>,
-  ): Promise<void> => {
-    event.preventDefault();
+  const publishProduct = async (id: number): Promise<PublishResponse> =>
+    request<PublishResponse>(
+      `/api/admin/products/${String(id)}/publish`,
+      {
+        method: "POST",
+        idempotent: true,
+      },
+    );
+
+  const cleanupRemovedImages = async (): Promise<number> => {
+    const results = await Promise.allSettled(
+      removedImageUrls.map((url) =>
+        request("/api/admin/uploads/product-images", {
+          method: "DELETE",
+          body: { url },
+        }),
+      ),
+    );
+
+    return results.filter((result) => result.status === "rejected").length;
+  };
+
+  const saveProduct = async (shouldPublish: boolean): Promise<void> => {
+    if (busy) {
+      return;
+    }
+
+    if (uploadingImages) {
+      setError("Rasmlar yuklanib bo‘lishini kuting.");
+      return;
+    }
+
+    if (!formRef.current?.reportValidity()) {
+      return;
+    }
+
+    if (product.images.length === 0) {
+      setError("Kamida bitta mahsulot rasmini yuklang.");
+      return;
+    }
+
+    if (
+      shouldPublish &&
+      (!product.isActive ||
+        !product.variants.some((variant) => variant.stock > 0))
+    ) {
+      setError(
+        "Kanalga chiqarish uchun mahsulot faol va kamida bitta variant stock’i musbat bo‘lishi kerak.",
+      );
+      return;
+    }
+
     setBusy(true);
     setError(null);
+    setSuccess(null);
+    setPostUrl(null);
+    let productWasSaved = false;
 
     try {
-      await request(
-        initialProduct?.id
-          ? `/api/admin/products/${String(initialProduct.id)}`
+      const result = await request<ProductMutationResponse>(
+        productId
+          ? `/api/admin/products/${String(productId)}`
           : "/api/admin/products",
         {
-          method: initialProduct?.id ? "PATCH" : "POST",
+          method: productId ? "PATCH" : "POST",
           idempotent: true,
-          body: product,
+          body: {
+            ...product,
+            images: product.images.map((image, index) => ({
+              ...(image.id === undefined ? {} : { id: image.id }),
+              url: image.url,
+              sortOrder: index,
+            })),
+          },
         },
       );
-      router.push("/products");
+      const savedId = result.data.id;
+      productWasSaved = true;
+      setProductId(savedId);
+      const cleanupFailureCount = await cleanupRemovedImages();
+      setRemovedImageUrls([]);
+      setPersistedImageUrls(product.images.map((image) => image.url));
+
+      if (shouldPublish) {
+        const publishResult = await publishProduct(savedId);
+        setPostUrl(publishResult.data.postUrl);
+        setSuccess(
+          publishResult.data.postUrl
+            ? "Mahsulot saqlandi va Telegram kanaliga chiqarildi."
+            : `Mahsulot saqlandi va kanalga chiqarildi. Message ID: ${String(publishResult.data.telegramMessageId)}`,
+        );
+      } else {
+        setSuccess("Mahsulot muvaffaqiyatli saqlandi.");
+      }
+
+      if (cleanupFailureCount > 0) {
+        setError(
+          "Mahsulot saqlandi, lekin eski rasm fayllaridan ayrimlarini tozalab bo‘lmadi.",
+        );
+      }
+
+      if (initialProduct?.id === undefined) {
+        window.history.replaceState(
+          null,
+          "",
+          `/products/${String(savedId)}/edit`,
+        );
+      }
+
       router.refresh();
     } catch (submitError) {
       setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "Mahsulotni saqlab bo‘lmadi.",
+        productWasSaved
+          ? `Mahsulot saqlandi, lekin kanalga chiqarilmadi: ${getErrorMessage(submitError, "Telegram xatosi yuz berdi.")}`
+          : getErrorMessage(submitError, "Mahsulotni saqlab bo‘lmadi."),
       );
     } finally {
       setBusy(false);
@@ -86,49 +227,80 @@ export function ProductEditor({
   };
 
   const publish = async (): Promise<void> => {
-    if (initialProduct?.id === undefined) {
+    if (productId === undefined || busy) {
       return;
     }
 
     setBusy(true);
     setError(null);
+    setSuccess(null);
+    setPostUrl(null);
 
     try {
-      const result = await request<{
-        data: {
-          telegramMessageId: number;
-          postUrl: string | null;
-        };
-      }>(
-        `/api/admin/products/${String(initialProduct.id)}/publish`,
-        {
-          method: "POST",
-          idempotent: true,
-        },
-      );
-      window.alert(
+      const result = await publishProduct(productId);
+      setPostUrl(result.data.postUrl);
+      setSuccess(
         result.data.postUrl
-          ? `Post yuborildi: ${result.data.postUrl}`
+          ? "Mahsulot Telegram kanaliga chiqarildi."
           : `Post yuborildi. Message ID: ${String(result.data.telegramMessageId)}`,
       );
       router.refresh();
     } catch (publishError) {
       setError(
-        publishError instanceof Error
-          ? publishError.message
-          : "Mahsulotni kanalga chiqarib bo‘lmadi.",
+        getErrorMessage(
+          publishError,
+          "Mahsulotni kanalga chiqarib bo‘lmadi.",
+        ),
       );
     } finally {
       setBusy(false);
     }
   };
 
+  const cancelEditing = async (): Promise<void> => {
+    if (busy) {
+      return;
+    }
+
+    setBusy(true);
+    const draftUrls = product.images
+      .map((image) => image.url)
+      .filter((url) => !persistedImageUrls.includes(url));
+
+    await Promise.allSettled(
+      draftUrls.map((url) =>
+        request("/api/admin/uploads/product-images", {
+          method: "DELETE",
+          body: { url },
+        }),
+      ),
+    );
+    router.back();
+  };
+
   return (
-    <form className="editor-form" onSubmit={(event) => void submit(event)}>
+    <form
+      className="editor-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void saveProduct(false);
+      }}
+      ref={formRef}
+    >
       {error ? (
         <p className="form-error" role="alert">
           {error}
         </p>
+      ) : null}
+      {success ? (
+        <div className="form-success" role="status">
+          <span>{success}</span>
+          {postUrl ? (
+            <a href={postUrl} rel="noreferrer" target="_blank">
+              Kanal postini ochish ↗
+            </a>
+          ) : null}
+        </div>
       ) : null}
       <section className="panel form-section">
         <div className="panel-heading">
@@ -153,9 +325,16 @@ export function ProductEditor({
             Nomi
             <input
               maxLength={160}
-              onChange={(event) =>
-                { setProduct({ ...product, name: event.target.value }); }
-              }
+              onChange={(event) => {
+                const name = event.target.value;
+                setProduct((current) => ({
+                  ...current,
+                  name,
+                  ...(slugEdited
+                    ? {}
+                    : { slug: slugifyProductName(name) }),
+                }));
+              }}
               required
               value={product.name}
             />
@@ -164,9 +343,10 @@ export function ProductEditor({
             Slug
             <input
               maxLength={200}
-              onChange={(event) =>
-                { setProduct({ ...product, slug: event.target.value }); }
-              }
+              onChange={(event) => {
+                setSlugEdited(true);
+                setProduct({ ...product, slug: event.target.value });
+              }}
               pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
               required
               value={product.slug}
@@ -255,94 +435,29 @@ export function ProductEditor({
       <section className="panel form-section">
         <div className="panel-heading">
           <div>
-            <span>HTTPS URL · maksimal 8 ta</span>
+            <span>Telefon galereyasi · 1–8 ta</span>
             <h2>Rasmlar</h2>
           </div>
-          <button
-            className="secondary-button"
-            disabled={product.images.length >= 8}
-            onClick={() =>
-              { setProduct({
-                ...product,
-                images: [
-                  ...product.images,
-                  { url: "", sortOrder: product.images.length },
-                ],
-              }); }
-            }
-            type="button"
-          >
-            + Rasm
-          </button>
         </div>
-        <div className="repeat-list">
-          {product.images.map((image, index) => (
-            <div className="repeat-row image-row" key={image.id ?? index}>
-              <label>
-                URL
-                <input
-                  onChange={(event) => {
-                    const images = [...product.images];
-                    const current = images[index];
-
-                    if (current) {
-                      images[index] = {
-                        ...current,
-                        url: event.target.value,
-                      };
-                      setProduct({ ...product, images });
-                    }
-                  }}
-                  placeholder="https://placehold.co/..."
-                  required
-                  type="url"
-                  value={image.url}
-                />
-              </label>
-              <label>
-                Tartib
-                <input
-                  max={7}
-                  min={0}
-                  onChange={(event) => {
-                    const images = [...product.images];
-                    const current = images[index];
-
-                    if (current) {
-                      images[index] = {
-                        ...current,
-                        sortOrder: Number(event.target.value),
-                      };
-                      setProduct({ ...product, images });
-                    }
-                  }}
-                  required
-                  type="number"
-                  value={image.sortOrder}
-                />
-              </label>
-              <button
-                className="danger-button"
-                onClick={() =>
-                  { setProduct({
-                    ...product,
-                    images: product.images.filter(
-                      (_, itemIndex) => itemIndex !== index,
-                    ),
-                  }); }
-                }
-                type="button"
-              >
-                Olib tashlash
-              </button>
-            </div>
-          ))}
-          {product.images.length === 0 ? (
-            <p className="hint">
-              Rasm majburiy emas, lekin kamida bittasi tavsiya qilinadi.
-            </p>
-          ) : null}
-        </div>
+        <ProductImageUploader
+          disabled={busy}
+          draftId={draftId}
+          images={product.images}
+          onChange={(updater) => {
+            setProduct((current) => ({
+              ...current,
+              images: updater(current.images),
+            }));
+          }}
+          onUploadingChange={setUploadingImages}
+          onPersistedImageRemoved={(url) => {
+            setRemovedImageUrls((current) =>
+              current.includes(url) ? current : [...current, url],
+            );
+          }}
+          persistedImageUrls={persistedImageUrls}
+          {...(productId === undefined ? {} : { productId })}
+        />
       </section>
       <section className="panel form-section">
         <div className="panel-heading">
@@ -431,28 +546,53 @@ export function ProductEditor({
           ))}
         </div>
       </section>
+      <ProductChannelPreview
+        code={product.code}
+        description={product.description}
+        discountPrice={product.discountPrice}
+        name={product.name}
+        price={product.price}
+        variants={product.variants}
+      />
       <div className="form-actions">
-        {initialProduct?.id !== undefined ? (
+        {productId !== undefined ? (
           <button
             className="secondary-button"
-            disabled={busy || !product.isActive}
+            disabled={busy || uploadingImages || !product.isActive}
             onClick={() => {
               void publish();
             }}
             type="button"
           >
-            Telegram kanaliga chiqarish
+            Qayta kanalga chiqarish
           </button>
         ) : null}
         <button
           className="secondary-button"
-          onClick={() => { router.back(); }}
+          disabled={busy || uploadingImages}
+          onClick={() => {
+            void cancelEditing();
+          }}
           type="button"
         >
           Bekor qilish
         </button>
-        <button className="primary-button" disabled={busy} type="submit">
+        <button
+          className="primary-button"
+          disabled={busy || uploadingImages}
+          type="submit"
+        >
           {busy ? "Saqlanmoqda…" : "Saqlash"}
+        </button>
+        <button
+          className="publish-button"
+          disabled={busy || uploadingImages}
+          onClick={() => {
+            void saveProduct(true);
+          }}
+          type="button"
+        >
+          {busy ? "Bajarilmoqda…" : "Saqlash va kanalga chiqarish"}
         </button>
       </div>
     </form>

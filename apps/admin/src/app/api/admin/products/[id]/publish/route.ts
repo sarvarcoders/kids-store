@@ -14,7 +14,7 @@ export async function POST(
   context: RouteContext,
 ): Promise<Response> {
   try {
-    const { session, idempotencyKey } = getAdminMutationContext(
+    const { session, idempotencyKey } = await getAdminMutationContext(
       request,
       { idempotency: true },
     );

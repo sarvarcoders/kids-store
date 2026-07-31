@@ -1,10 +1,10 @@
 "use client";
 
+import { cartResponseSchema } from "@kids-store/shared/cart";
 import {
-  cartResponseSchema,
   productDetailResponseSchema,
   type ProductDetailDto,
-} from "@kids-store/shared";
+} from "@kids-store/shared/catalog";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,6 +26,7 @@ import {
   requestMiniAppApi,
 } from "@/lib/api/client";
 import { formatUzbekPrice } from "@/lib/format/price";
+import { PRODUCT_IMAGE_BLUR_DATA_URL } from "@/lib/images/placeholder";
 import {
   findSelectedProductVariant,
   getAvailableColorsForSize,
@@ -213,7 +214,11 @@ export function ProductDetail({
   if (error || !product) {
     return (
       <main className="mx-auto min-h-screen w-full max-w-3xl px-3 py-5 sm:px-5">
-        <Link className="focus-ring mb-5 inline-flex rounded-full px-2 py-1 text-sm font-bold" href="/catalog">
+        <Link
+          className="focus-ring mb-5 inline-flex rounded-full px-2 py-1 text-sm font-bold"
+          href="/catalog"
+          prefetch={false}
+        >
           ← Katalogga qaytish
         </Link>
         <ErrorState
@@ -239,6 +244,7 @@ export function ProductDetail({
       <Link
         className="surface focus-ring mb-4 inline-flex rounded-full px-4 py-2 text-sm font-extrabold"
         href="/catalog"
+        prefetch={false}
       >
         ← Katalog
       </Link>
@@ -249,8 +255,10 @@ export function ProductDetail({
             {activeImage ? (
               <Image
                 alt={`${product.name} — ${String(activeImageIndex + 1)}-rasm`}
+                blurDataURL={PRODUCT_IMAGE_BLUR_DATA_URL}
                 className="object-cover"
                 fill
+                placeholder="blur"
                 priority
                 sizes="(max-width: 768px) 100vw, 700px"
                 src={activeImage.url}
@@ -278,8 +286,11 @@ export function ProductDetail({
                 >
                   <Image
                     alt=""
+                    blurDataURL={PRODUCT_IMAGE_BLUR_DATA_URL}
                     className="object-cover"
                     fill
+                    loading="lazy"
+                    placeholder="blur"
                     sizes="64px"
                     src={image.url}
                   />

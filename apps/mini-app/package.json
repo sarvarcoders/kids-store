@@ -8,6 +8,7 @@
     "dev": "next dev",
     "prebuild": "pnpm --filter @kids-store/core build",
     "build": "next build",
+    "check:bundle": "node scripts/check-initial-route-bundle.mjs",
     "start": "next start",
     "test": "tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",

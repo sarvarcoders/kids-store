@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { verifiedTelegramUserDtoSchema } from "../telegram/telegram-web-app.schema.js";
+
 const databaseIdSchema = z.coerce
   .number()
   .int()
@@ -8,6 +10,7 @@ const databaseIdSchema = z.coerce
 const moneySchema = z.number().int().nonnegative();
 const httpsUrlSchema = z
   .url()
+  .max(2_048)
   .refine((value) => value.startsWith("https://"), {
     message: "Rasm URL HTTPS bo‘lishi kerak",
   });
@@ -80,6 +83,16 @@ export const productListItemDtoSchema = z.object({
   availableSizes: z.array(z.string().trim().min(1).max(50)).max(50),
 });
 
+export const catalogProductDtoSchema = z.object({
+  id: databaseIdSchema,
+  name: z.string().trim().min(1).max(160),
+  price: moneySchema,
+  discountPrice: moneySchema.optional(),
+  categoryName: z.string().trim().min(1).max(120),
+  imageUrl: httpsUrlSchema.optional(),
+  availableSizes: z.array(z.string().trim().min(1).max(50)).max(12),
+});
+
 export const productDetailDtoSchema = productListItemDtoSchema
   .omit({
     primaryImage: true,
@@ -101,7 +114,7 @@ export const paginationDtoSchema = z.object({
 });
 
 export const categoryListResponseSchema = z.object({
-  data: z.array(categoryDtoSchema),
+  data: z.array(categoryDtoSchema).max(100),
 });
 
 export const productListResponseSchema = z.object({
@@ -111,6 +124,15 @@ export const productListResponseSchema = z.object({
 
 export const productDetailResponseSchema = z.object({
   data: productDetailDtoSchema,
+});
+
+export const catalogResponseSchema = z.object({
+  categories: z.array(categoryDtoSchema).max(100),
+  products: z.array(catalogProductDtoSchema).max(24),
+  discountProducts: z.array(catalogProductDtoSchema).max(12),
+  user: verifiedTelegramUserDtoSchema,
+  pagination: paginationDtoSchema,
+  cartQuantity: z.number().int().nonnegative(),
 });
 
 export const apiErrorResponseSchema = z.object({
@@ -125,6 +147,8 @@ export type CategoryDto = z.infer<typeof categoryDtoSchema>;
 export type CategoryListResponse = z.infer<
   typeof categoryListResponseSchema
 >;
+export type CatalogProductDto = z.infer<typeof catalogProductDtoSchema>;
+export type CatalogResponse = z.infer<typeof catalogResponseSchema>;
 export type PaginationDto = z.infer<typeof paginationDtoSchema>;
 export type ProductDetailDto = z.infer<typeof productDetailDtoSchema>;
 export type ProductDetailResponse = z.infer<

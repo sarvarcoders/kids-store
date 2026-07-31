@@ -12,8 +12,8 @@ export default async function NewProductPage(): Promise<React.ReactNode> {
         <span>Katalog</span>
         <h2>Yangi mahsulot</h2>
         <p>
-          Narx va stock serverda qayta tekshiriladi. Rasm URL’i
-          tashqi serverdan fetch qilinmaydi.
+          Telefon galereyasidan rasm tanlang, variantlarni kiriting va
+          mahsulotni shu sahifadan kanalga chiqaring.
         </p>
       </div>
       <ProductEditor categories={categories} />

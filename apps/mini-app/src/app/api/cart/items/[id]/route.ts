@@ -6,6 +6,8 @@ import {
   parseJsonBody,
 } from "@/lib/api/route-error";
 import { authenticateMiniAppRequest } from "@/lib/auth/request-auth";
+import { createApiErrorResponse } from "@/lib/api/response";
+import { consumeMutationPermit } from "@/lib/rate-limit/mutation-rate-limit";
 import {
   removeCartItem,
   updateCartItemQuantity,
@@ -26,6 +28,15 @@ export async function PATCH(
 ): Promise<NextResponse> {
   try {
     const user = authenticateMiniAppRequest(request);
+
+    if (!(await consumeMutationPermit("cart", user.id))) {
+      return createApiErrorResponse(
+        429,
+        "RATE_LIMITED",
+        "Juda tez so‘rov yuborildi. Bir oz kutib qayta urinib ko‘ring.",
+      );
+    }
+
     const input = await parseJsonBody(request);
     const { id } = await context.params;
     const cart = await updateCartItemQuantity(user, id, input);
@@ -47,6 +58,15 @@ export async function DELETE(
 ): Promise<NextResponse> {
   try {
     const user = authenticateMiniAppRequest(request);
+
+    if (!(await consumeMutationPermit("cart", user.id))) {
+      return createApiErrorResponse(
+        429,
+        "RATE_LIMITED",
+        "Juda tez so‘rov yuborildi. Bir oz kutib qayta urinib ko‘ring.",
+      );
+    }
+
     const { id } = await context.params;
     const cart = await removeCartItem(user, id);
     const response = cartResponseSchema.parse({ data: cart });

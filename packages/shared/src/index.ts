@@ -1,5 +1,7 @@
 export {
   apiErrorResponseSchema,
+  catalogProductDtoSchema,
+  catalogResponseSchema,
   categoryDtoSchema,
   categoryListResponseSchema,
   paginationDtoSchema,
@@ -12,6 +14,8 @@ export {
   productQuerySchema,
   productVariantDtoSchema,
   type ApiErrorResponse,
+  type CatalogProductDto,
+  type CatalogResponse,
   type CategoryDto,
   type CategoryListResponse,
   type PaginationDto,

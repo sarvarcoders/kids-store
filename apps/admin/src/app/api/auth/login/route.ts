@@ -20,7 +20,7 @@ export async function POST(request: Request): Promise<Response> {
     const forwardedFor =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
       "unknown";
-    assertRateLimit({
+    await assertRateLimit({
       key: `admin-login:${forwardedFor}`,
       limit: 10,
       windowMs: 60_000,

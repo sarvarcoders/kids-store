@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { IdempotencyInProgressError } from "@kids-store/core";
 import { ZodError } from "zod";
 
 import { AdminAuthenticationError } from "../auth/request-auth";
@@ -17,6 +18,18 @@ export function noStoreJson(
 }
 
 export function adminApiError(error: unknown): NextResponse {
+  if (error instanceof IdempotencyInProgressError) {
+    return noStoreJson(
+      {
+        error: {
+          code: "IDEMPOTENCY_IN_PROGRESS",
+          message: "Amal bajarilmoqda. Bir ozdan keyin natijani tekshiring.",
+        },
+      },
+      409,
+    );
+  }
+
   if (
     error instanceof Error &&
     error.message === "RATE_LIMIT_EXCEEDED"

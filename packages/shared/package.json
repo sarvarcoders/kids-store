@@ -9,6 +9,26 @@
     ".": {
       "types": "./src/index.ts",
       "import": "./dist/index.js"
+    },
+    "./cart": {
+      "types": "./src/cart/cart.schema.ts",
+      "import": "./dist/cart/cart.schema.js"
+    },
+    "./catalog": {
+      "types": "./src/catalog/catalog.schema.ts",
+      "import": "./dist/catalog/catalog.schema.js"
+    },
+    "./order-domain": {
+      "types": "./src/order/order-domain.ts",
+      "import": "./dist/order/order-domain.js"
+    },
+    "./order-notification": {
+      "types": "./src/order/order-notification.ts",
+      "import": "./dist/order/order-notification.js"
+    },
+    "./telegram": {
+      "types": "./src/telegram/telegram-web-app.schema.ts",
+      "import": "./dist/telegram/telegram-web-app.schema.js"
     }
   },
   "files": [

@@ -8,6 +8,7 @@ import {
   updateAdminOrderStatus,
 } from "@/lib/orders/orders.service";
 import { runIdempotentMutation } from "@/lib/security/idempotency";
+import { revalidateCatalogAfterMutation } from "@/lib/catalog/revalidation";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,7 @@ export async function PATCH(
   context: RouteContext,
 ): Promise<Response> {
   try {
-    const { session, idempotencyKey } = getAdminMutationContext(
+    const { session, idempotencyKey } = await getAdminMutationContext(
       request,
       { idempotency: true },
     );
@@ -61,6 +62,7 @@ export async function PATCH(
           body.status,
         ),
     );
+    await revalidateCatalogAfterMutation();
 
     return noStoreJson({ data: result });
   } catch (error) {

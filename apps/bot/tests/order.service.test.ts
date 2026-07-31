@@ -180,3 +180,110 @@ void test("bir xil tasdiqlash kaliti dublikat order yaratmaydi", async () => {
   assert.equal(transactionCount, 1);
   assert.equal(stockReservationCount, 1);
 });
+
+void test("1000 parallel checkout urinishida stock chegarasi buzilmaydi", async () => {
+  let stock = 25;
+  let createdOrderCount = 0;
+  const transaction: OrderTransaction = {
+    findVariant() {
+      return Promise.resolve({
+        id: 10,
+        size: "98",
+        color: "Ko‘k",
+        stock,
+        product: {
+          id: 1,
+          name: "Bolalar uchun sport kostyumi",
+          price: 249_000,
+          discountPrice: 199_000,
+          isActive: true,
+        },
+      });
+    },
+    reserveStock(_productVariantId, quantity) {
+      if (stock < quantity) {
+        return Promise.resolve(false);
+      }
+
+      stock -= quantity;
+      return Promise.resolve(true);
+    },
+    upsertCustomer() {
+      return Promise.resolve(20);
+    },
+    createOrder() {
+      createdOrderCount += 1;
+      return Promise.resolve(createOrderRecord(baseInput));
+    },
+  };
+  const results = await Promise.allSettled(
+    Array.from({ length: 1_000 }, () =>
+      createOrderInTransaction(transaction, {
+        ...baseInput,
+        idempotencyKey: randomUUID(),
+      }),
+    ),
+  );
+
+  assert.equal(
+    results.filter((result) => result.status === "fulfilled").length,
+    25,
+  );
+  assert.equal(createdOrderCount, 25);
+  assert.equal(stock, 0);
+});
+
+void test("10 va 100 parallel checkout ham stock chegarasini buzmaydi", async () => {
+  for (const attemptCount of [10, 100]) {
+    let stock = 25;
+    let createdOrderCount = 0;
+    const transaction: OrderTransaction = {
+      findVariant() {
+        return Promise.resolve({
+          id: 10,
+          size: "98",
+          color: "Ko'k",
+          stock,
+          product: {
+            id: 1,
+            name: "Bolalar uchun sport kostyumi",
+            price: 249_000,
+            discountPrice: 199_000,
+            isActive: true,
+          },
+        });
+      },
+      reserveStock(_productVariantId, quantity) {
+        if (stock < quantity) {
+          return Promise.resolve(false);
+        }
+
+        stock -= quantity;
+        return Promise.resolve(true);
+      },
+      upsertCustomer() {
+        return Promise.resolve(20);
+      },
+      createOrder() {
+        createdOrderCount += 1;
+        return Promise.resolve(createOrderRecord(baseInput));
+      },
+    };
+    const results = await Promise.allSettled(
+      Array.from({ length: attemptCount }, () =>
+        createOrderInTransaction(transaction, {
+          ...baseInput,
+          idempotencyKey: randomUUID(),
+        }),
+      ),
+    );
+    const expectedOrders = Math.min(attemptCount, 25);
+
+    assert.equal(
+      results.filter((result) => result.status === "fulfilled").length,
+      expectedOrders,
+    );
+    assert.equal(createdOrderCount, expectedOrders);
+    assert.equal(stock, 25 - expectedOrders);
+  }
+});

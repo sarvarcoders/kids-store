@@ -1,4 +1,11 @@
+import { ResilientRateLimiter } from "@kids-store/core";
 import { z } from "zod";
+
+import {
+  adminRedisConfig,
+  getAdminRedisProducer,
+  logAdminRedisFallback,
+} from "../redis/server";
 
 const rateLimitInputSchema = z.object({
   key: z.string().min(1).max(300),
@@ -7,41 +14,42 @@ const rateLimitInputSchema = z.object({
   windowMs: z.number().int().min(1_000).max(3_600_000),
 });
 
-const attempts = new Map<string, number[]>();
+let limiters = new Map<string, ResilientRateLimiter>();
 
-export function assertRateLimit(input: {
+export async function assertRateLimit(input: {
   key: string;
   limit?: number;
   nowMs?: number;
   windowMs?: number;
-}): void {
+}): Promise<void> {
   const parsed = rateLimitInputSchema.parse({
     key: input.key,
     limit: input.limit ?? 30,
     nowMs: input.nowMs ?? Date.now(),
     windowMs: input.windowMs ?? 60_000,
   });
-  const cutoff = parsed.nowMs - parsed.windowMs;
-  const current = (attempts.get(parsed.key) ?? []).filter(
-    (timestamp) => timestamp > cutoff,
-  );
+  const limiterKey = `${String(parsed.limit)}:${String(parsed.windowMs)}`;
+  let limiter = limiters.get(limiterKey);
 
-  if (current.length >= parsed.limit) {
-    throw new Error("RATE_LIMIT_EXCEEDED");
+  if (!limiter) {
+    limiter = new ResilientRateLimiter({
+      keyPrefix: adminRedisConfig?.keyPrefix ?? "kids-store",
+      limit: parsed.limit,
+      onRedisError: logAdminRedisFallback,
+      redis: getAdminRedisProducer() ?? null,
+      scope: `admin-${String(parsed.limit)}-${String(parsed.windowMs)}`,
+      windowMs: parsed.windowMs,
+    });
+    limiters.set(limiterKey, limiter);
   }
 
-  current.push(parsed.nowMs);
-  attempts.set(parsed.key, current);
+  const decision = await limiter.consume(parsed.key, parsed.nowMs);
 
-  if (attempts.size > 5_000) {
-    const firstKey = attempts.keys().next().value;
-
-    if (typeof firstKey === "string") {
-      attempts.delete(firstKey);
-    }
+  if (!decision.allowed) {
+    throw new Error("RATE_LIMIT_EXCEEDED");
   }
 }
 
 export function resetRateLimitsForTests(): void {
-  attempts.clear();
+  limiters = new Map<string, ResilientRateLimiter>();
 }

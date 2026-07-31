@@ -3,12 +3,12 @@ import "server-only";
 import { authenticateAdminRequest } from "../auth/request-auth";
 import { assertRateLimit } from "../security/rate-limit";
 
-export function getAdminMutationContext(
+export async function getAdminMutationContext(
   request: Request,
   options: {
     idempotency?: boolean;
   } = {},
-) {
+): Promise<ReturnType<typeof authenticateAdminRequest>> {
   const context = authenticateAdminRequest(request, {
     csrf: true,
     ...(options.idempotency === undefined
@@ -17,7 +17,7 @@ export function getAdminMutationContext(
   });
   const pathname = new URL(request.url).pathname;
 
-  assertRateLimit({
+  await assertRateLimit({
     key: `admin-mutation:${context.session.adminTelegramId}:${pathname}`,
     limit: 30,
     windowMs: 60_000,

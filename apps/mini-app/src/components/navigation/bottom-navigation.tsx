@@ -31,7 +31,7 @@ const navigationItems = [
 
 export function BottomNavigation(): ReactNode {
   const pathname = usePathname();
-  const { cart } = useCart();
+  const { cartQuantity } = useCart();
 
   return (
     <nav
@@ -53,16 +53,16 @@ export function BottomNavigation(): ReactNode {
               data-active={isActive}
               href={item.href}
               key={item.href}
+              prefetch={false}
             >
               <span aria-hidden="true" className="relative text-lg">
                 {item.icon}
                 {item.href === "/cart" &&
-                cart &&
-                cart.totalQuantity > 0 ? (
+                cartQuantity > 0 ? (
                   <span className="cart-badge">
-                    {cart.totalQuantity > 99
+                    {cartQuantity > 99
                       ? "99+"
-                      : String(cart.totalQuantity)}
+                      : String(cartQuantity)}
                   </span>
                 ) : null}
               </span>

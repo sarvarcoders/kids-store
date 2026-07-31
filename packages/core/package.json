@@ -24,6 +24,8 @@
   "dependencies": {
     "@kids-store/database": "workspace:*",
     "@kids-store/shared": "workspace:*",
+    "bullmq": "^6.0.0",
+    "ioredis": "^5.11.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {

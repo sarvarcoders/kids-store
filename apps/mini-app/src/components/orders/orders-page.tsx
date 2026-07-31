@@ -1,11 +1,11 @@
 "use client";
 
 import {
-  formatOrderStatus,
   orderListResponseSchema,
   type OrderListItemDto,
-  type PaginationDto,
-} from "@kids-store/shared";
+} from "@kids-store/shared/cart";
+import type { PaginationDto } from "@kids-store/shared/catalog";
+import { formatOrderStatus } from "@kids-store/shared/order-notification";
 import Link from "next/link";
 import {
   useEffect,
@@ -133,6 +133,7 @@ export function OrdersPage(): ReactNode {
                 <Link
                   className="surface focus-ring block rounded-3xl p-5 no-underline"
                   href={`/orders/${String(order.id)}`}
+                  prefetch={false}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>

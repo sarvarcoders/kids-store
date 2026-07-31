@@ -132,3 +132,28 @@ void test("client yuborgan fake price inputdan olib tashlanadi", () => {
     quantity: 1,
   });
 });
+
+void test("ketma-ket 5 ta cart add quantityni xavfsiz birlashtiradi", () => {
+  let quantity = 0;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    quantity = getNextCartQuantity({
+      currentQuantity: quantity,
+      requestedQuantity: 1,
+      stock: 10,
+    });
+  }
+
+  assert.equal(quantity, 5);
+  assert.throws(
+    () =>
+      getNextCartQuantity({
+        currentQuantity: quantity,
+        requestedQuantity: 1,
+        stock: 10,
+      }),
+    (error: unknown) =>
+      error instanceof CartQuantityError &&
+      error.code === "QUANTITY_LIMIT",
+  );
+});

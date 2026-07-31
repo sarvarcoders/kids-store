@@ -40,6 +40,19 @@ const envSchema = z.object({
     .transform((value) => BigInt(value)),
   ADMIN_TELEGRAM_IDS: adminTelegramIdsSchema,
   ADMIN_APP_URL: adminAppUrlSchema,
+  CATALOG_REVALIDATION_URL: z.url().optional(),
+  CACHE_REVALIDATION_SECRET: z.string().min(32).max(256).optional(),
+}).superRefine((value, context) => {
+  const hasUrl = value.CATALOG_REVALIDATION_URL !== undefined;
+  const hasSecret = value.CACHE_REVALIDATION_SECRET !== undefined;
+
+  if (hasUrl !== hasSecret) {
+    context.addIssue({
+      code: "custom",
+      path: [hasUrl ? "CACHE_REVALIDATION_SECRET" : "CATALOG_REVALIDATION_URL"],
+      message: "Catalog cache invalidation URL va secret birga berilishi kerak",
+    });
+  }
 });
 
 export const env = envSchema.parse(process.env);

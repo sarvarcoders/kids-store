@@ -74,8 +74,10 @@ Allowlistdagi foydalanuvchi `/admin` komandasini yuborganda bot
 `⚙️ Admin panel` Web App tugmasini ko‘rsatadi. Botning mavjud
 `🛍 Do‘kon` default menu tugmasi o‘zgarmaydi.
 
-Tugallanmagan bot checkout sessioni process memory’sida saqlanadi va restartda
-yo‘qoladi. Database’ga yozilgan buyurtmalar saqlanib qoladi.
+`REDIS_URL` sozlanganda tugallanmagan bot checkout sessioni 24 soat saqlanadi
+va process restartidan keyin tiklanadi. Redis sozlanmagan lokal developmentda
+session memory fallback’da qoladi va restartda yo‘qoladi. Database’ga yozilgan
+buyurtmalar har ikki holatda ham saqlanib qoladi.
 
 ## Telegram Mini App
 
@@ -87,6 +89,8 @@ ADMIN_TELEGRAM_ID=
 DATABASE_URL=
 NEXT_PUBLIC_MINI_APP_URL=http://localhost:3000
 MINI_APP_DEV_MODE=true
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_STORAGE_BUCKET=product-images
 ```
 
 ```bash
@@ -98,10 +102,66 @@ hash, `auth_date` va user JSON’ni tekshiradi. `initDataUnsafe` auth manbasi
 emas. Mock user faqat `NODE_ENV=development` va `MINI_APP_DEV_MODE=true`
 bo‘lganda ishlaydi; production’da bypass yopiq.
 
+Mini App Vercel environmentida `SUPABASE_URL` va
+`SUPABASE_STORAGE_BUCKET` Next Image allowlistini build vaqtida aniq bucket
+host/path bilan cheklaydi. `SUPABASE_SERVICE_ROLE_KEY` Mini App’ga kerak emas.
+
 Mini App katalog, persistent cart, checkout va order history’ni taqdim etadi.
 Checkout narx va stockni database’dan transaction ichida qayta o‘qiydi,
 stockni atomic kamaytiradi va idempotency key bilan duplicate orderni
 to‘xtatadi.
+
+### Performance konfiguratsiyasi
+
+Production reliability uchun bot, Mini App va Admin bir xil Redis cluster’dan
+foydalanadi. TLS yoqilgan `rediss://` URL tavsiya qilinadi; Redis eviction
+policy `noeviction` bo‘lishi kerak:
+
+```dotenv
+REDIS_URL=rediss://<redis-host>:<port>
+REDIS_KEY_PREFIX=kids-store
+CACHE_REVALIDATION_SECRET=<kamida-32-belgili-tasodifiy-secret>
+CATALOG_REVALIDATION_URL=https://<mini-app-domain>/api/internal/catalog/revalidate
+```
+
+`REDIS_URL` berilganda cart/checkout/publish/admin mutation rate-limitlari
+instance’lar orasida umumiy bo‘ladi, bot conversation sessionlari 24 soat
+saqlanadi va admin mutation idempotency distributed lock bilan ishlaydi.
+Mini App checkout notificationlarini Redis queue’ga yozadi; bot processi ularni
+5 ta parallel worker bilan yuboradi, exponential backoff asosida 4 marta
+urinadi va oxirgi xatoni dead-letter queue’da saqlaydi. Redis sozlanmagan lokal
+developmentda mavjud to‘g‘ridan-to‘g‘ri notification va in-memory fallback
+ishlashda davom etadi.
+
+Product, category yoki stock o‘zgarganda katalog cache’i secure internal route
+orqali darhol invalidatsiya qilinadi. `CACHE_REVALIDATION_SECRET` Mini App,
+Admin va bot environmentlarida bir xil; `CATALOG_REVALIDATION_URL` esa Admin
+va botda Mini App production endpointiga qarashi kerak. Secret client bundle’ga
+chiqmaydi.
+
+Mini App bosh sahifasi authenticated `GET /api/catalog` orqali user,
+kategoriyalar, birinchi mahsulot sahifasi, chegirmali mahsulotlar va cart
+quantity’ni bitta requestda oladi. Authenticated response doim `no-store`;
+userga bog‘liq bo‘lmagan catalog query natijalari serverda 60 soniya cache
+qilinadi. Cart va checkout mutationlari hech qachon cache qilinmaydi.
+
+Bot `@grammyjs/runner` bilan ko‘pi bilan 10 ta update’ni parallel qayta
+ishlaydi. Bitta Telegram user update’lari session race condition bo‘lmasligi
+uchun ketma-ket bajariladi. Telegram 429, vaqtinchalik 5xx va network xatolari
+cheklangan auto-retry bilan boshqariladi.
+
+Vercel serverless runtime uchun `DATABASE_URL` Supabase Supavisor transaction
+pooler manzili bo‘lishi kerak; migration va introspection uchun `DIRECT_URL`
+saqlanadi. Har process Prisma/pg pool limiti:
+
+```dotenv
+DATABASE_POOL_MAX=5
+```
+
+`GET /api/catalog` 12 ta asosiy, 6 ta chegirmali mahsulot va ko‘pi bilan 100 ta
+kategoriyani qaytaradi. Qolgan mahsulotlar eski paginated `GET /api/products`
+orqali olinadi. Response `X-Catalog-Gzip-Bytes` va `Server-Timing` bilan
+o‘lchanadi; regression testi 100 KB gzip limitini tekshiradi.
 
 ## Admin panel
 
@@ -118,6 +178,9 @@ TELEGRAM_BOT_USERNAME=
 ADMIN_TELEGRAM_IDS=123456789,987654321
 ADMIN_SESSION_SECRET=
 NEXT_PUBLIC_ADMIN_URL=http://localhost:3001
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_STORAGE_BUCKET=product-images
 ```
 
 `ADMIN_SESSION_SECRET` kamida 32 belgili, tasodifiy va production uchun alohida
@@ -138,25 +201,38 @@ kirish o‘rniga admin panelni botdagi alohida Telegram Web App tugmasidan
 oching. Keyingi browser auth SSO yoki passkey bilan alohida xavfsizlik auditi
 asosida rejalashtiriladi.
 
-Rasm boshqaruvi HTTPS URL’ni saqlaydi, tashqi URL’ni serverdan fetch qilmaydi.
-MVP allowlisti `placehold.co` va `images.unsplash.com` hostlari bilan
-cheklangan.
+Mahsulot yaratishda admin telefondan 1–8 ta JPEG, PNG yoki WebP rasm tanlaydi.
+Brauzer rasmni eng katta tomoni 1600px bo‘lguncha kichraytirib WebP yoki
+optimallashtirilgan JPEG qiladi; server 3 MB limit, MIME va magic bytes’ni
+qayta tekshiradi. Fayl server-only service-role orqali public
+`product-images` bucket’iga
+`products/<product-id-yoki-temp>/<timestamp>-<random>.<format>` yo‘lida
+yuklanadi. Database faqat stable public HTTPS URL va `sortOrder`ni saqlaydi.
+
+`SUPABASE_SERVICE_ROLE_KEY` hech qachon `NEXT_PUBLIC_` prefiksi bilan
+berilmasin. Bucket mavjud bo‘lmasa birinchi upload uni public va image-only
+limitlar bilan yaratishga urinadi; mavjud bucket private bo‘lsa upload xavfsiz
+rad etiladi. Forma bekor qilinganda draft rasmlar tozalanadi. Brauzer kutilmagan
+yopilib qolgan holat uchun `products/temp/` obyektlarini vaqti-vaqti bilan
+Storage lifecycle yoki alohida maintenance job orqali tozalash tavsiya etiladi.
+Oldingi `placehold.co` va `images.unsplash.com` URL’lari backward compatibility
+uchun saqlanadi; yangi asosiy flow gallery/camera upload hisoblanadi.
 
 ### Vercel monorepo deploy
 
 1. Vercel project Root Directory qiymatini `apps/admin` qiling.
 2. `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHANNEL_ID`,
    `TELEGRAM_BOT_USERNAME`, `ADMIN_TELEGRAM_IDS` va kuchli
-   `ADMIN_SESSION_SECRET`ni server Environment Variables sifatida kiriting.
+   `ADMIN_SESSION_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` va
+   `SUPABASE_STORAGE_BUCKET`ni server Environment Variables sifatida kiriting.
 3. Faqat public URL’ni `NEXT_PUBLIC_ADMIN_URL` sifatida kiriting.
 4. Botdagi admin Web App tugmasini production HTTPS URL’ga ulang.
 5. `AdminAuditLog` migration production database’ga deploy qilinganidan keyin
    panelni ishga tushiring.
 
-In-memory rate limit va idempotency cache serverless instansiyalar orasida
-umumiy emas. Katta production deployment uchun Redis kabi shared storage
-tavsiya qilinadi. Database transaction, unique constraint va conditional order
-status update data integrity’ni saqlaydi.
+Admin mutation rate-limit va idempotency Redis sozlanganda barcha serverless
+instance’lar orasida umumiy ishlaydi. Database transaction, unique constraint
+va conditional order status update data integrity’ni saqlaydi.
 
 ## Tekshiruv va build
 
@@ -165,6 +241,7 @@ pnpm typecheck
 pnpm lint
 pnpm test
 pnpm build
+pnpm check:mini-app-bundle
 ```
 
 Alohida ilovalar:

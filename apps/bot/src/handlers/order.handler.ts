@@ -24,11 +24,12 @@ import {
   formatOrderConfirmation,
   type CreatedOrderMessageInput,
 } from "../services/order-message.formatter.js";
+import { revalidateCatalogAfterStockChange } from "../services/catalog-revalidation.js";
 import {
   OrderServiceError,
   type OrderService,
 } from "../services/order.service.js";
-import { findActiveProductById } from "../services/product.service.js";
+import { findActiveProductVariant } from "../services/product.service.js";
 import type {
   BotContext,
   OrderDraft,
@@ -105,12 +106,13 @@ async function handleQuantityCallback(
     return;
   }
 
-  const product = await findActiveProductById(draft.productId);
-  const variant = product?.variants.find(
-    (item) => item.id === productVariantId,
+  const selection = await findActiveProductVariant(
+    draft.productId,
+    productVariantId,
   );
+  const variant = selection?.variant;
 
-  if (!product || !variant || variant.stock <= 0) {
+  if (!selection || !variant) {
     ctx.session.orderDraft = null;
     await ctx.reply(
       "Tanlangan variant hozir mavjud emas. Mahsulotni qayta ochib ko‘ring.",
@@ -129,14 +131,14 @@ async function handleQuantityCallback(
   }
 
   const unitPrice =
-    product.discountPrice !== null &&
-    product.discountPrice < product.price
-      ? product.discountPrice
-      : product.price;
+    selection.discountPrice !== null &&
+    selection.discountPrice < selection.price
+      ? selection.discountPrice
+      : selection.price;
 
   ctx.session.orderDraft = {
     ...draft,
-    productName: product.name,
+    productName: selection.productName,
     selectedSize: variant.size,
     selectedColor: variant.color,
     unitPrice,
@@ -399,6 +401,7 @@ async function handleConfirmCallback(
     );
 
     if (!result.wasDuplicate) {
+      await revalidateCatalogAfterStockChange();
       await sendAdminNotification(ctx, message);
     }
   } catch (error) {

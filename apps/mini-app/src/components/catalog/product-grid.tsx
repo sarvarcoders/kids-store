@@ -1,12 +1,12 @@
-import type { ProductListItemDto } from "@kids-store/shared";
-import type { ReactNode } from "react";
+import type { CatalogProductDto } from "@kids-store/shared/catalog";
+import { memo, type ReactNode } from "react";
 
 import { ProductCard } from "./product-card";
 
-export function ProductGrid({
+export const ProductGrid = memo(function ProductGrid({
   products,
 }: {
-  products: ProductListItemDto[];
+  products: CatalogProductDto[];
 }): ReactNode {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -15,4 +15,4 @@ export function ProductGrid({
       ))}
     </div>
   );
-}
+});

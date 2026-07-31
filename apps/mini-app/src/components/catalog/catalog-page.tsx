@@ -1,14 +1,13 @@
 "use client";
 
-import {
-  authSessionResponseSchema,
-  categoryListResponseSchema,
-  productListResponseSchema,
-  type CategoryDto,
-  type PaginationDto,
-  type ProductListItemDto,
-  type VerifiedTelegramUserDto,
-} from "@kids-store/shared";
+import type {
+  CatalogProductDto,
+  CategoryDto,
+  PaginationDto,
+  ProductListResponse,
+} from "@kids-store/shared/catalog";
+import type { VerifiedTelegramUserDto } from "@kids-store/shared/telegram";
+import dynamic from "next/dynamic";
 import {
   useEffect,
   useState,
@@ -16,17 +15,42 @@ import {
   type SyntheticEvent,
 } from "react";
 
-import { fetchMiniAppApi } from "@/lib/api/client";
+import { requestMiniAppApiJson } from "@/lib/api/client";
+import { useCart } from "@/components/cart/cart-provider";
 import { useTelegram } from "@/components/telegram/telegram-provider";
+import { fetchInitialCatalog } from "@/lib/catalog/catalog-client";
 import {
   EmptyState,
   ErrorState,
   LoadingState,
 } from "@/components/ui/status-state";
-import { ProductGrid } from "./product-grid";
 
 const PRODUCTS_PER_PAGE = 12;
-const DISCOUNT_PRODUCTS_LIMIT = 6;
+const ProductGrid = dynamic(
+  () => import("./product-grid").then((module) => module.ProductGrid),
+  {
+    ssr: false,
+    loading: () => <LoadingState label="Mahsulotlar ko‘rsatilmoqda" />,
+  },
+);
+
+function compactProduct(
+  product: ProductListResponse["data"][number],
+): CatalogProductDto {
+  return {
+    id: product.id,
+    name: product.name,
+    price: product.price,
+    categoryName: product.category.name,
+    availableSizes: product.availableSizes,
+    ...(product.discountPrice === null
+      ? {}
+      : { discountPrice: product.discountPrice }),
+    ...(product.primaryImage === null
+      ? {}
+      : { imageUrl: product.primaryImage.url }),
+  };
+}
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error
@@ -41,16 +65,22 @@ export function CatalogPage(): ReactNode {
     readInitData,
     retryInitialization,
   } = useTelegram();
+  const { setCartQuantity } = useCart();
   const [viewer, setViewer] =
     useState<VerifiedTelegramUserDto | null>(null);
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [discountProducts, setDiscountProducts] = useState<
-    ProductListItemDto[]
+    CatalogProductDto[]
   >([]);
-  const [products, setProducts] = useState<ProductListItemDto[]>([]);
+  const [products, setProducts] = useState<CatalogProductDto[]>([]);
+  const [defaultProducts, setDefaultProducts] = useState<
+    CatalogProductDto[]
+  >([]);
   const [pagination, setPagination] = useState<PaginationDto | null>(
     null,
   );
+  const [defaultPagination, setDefaultPagination] =
+    useState<PaginationDto | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -60,7 +90,9 @@ export function CatalogPage(): ReactNode {
   const [initialError, setInitialError] = useState("");
   const [productsError, setProductsError] = useState("");
   const [searchError, setSearchError] = useState("");
-  const [retryVersion, setRetryVersion] = useState(0);
+  const [hasLoadedCatalog, setHasLoadedCatalog] = useState(false);
+  const [catalogRetryVersion, setCatalogRetryVersion] = useState(0);
+  const [productsRetryVersion, setProductsRetryVersion] = useState(0);
 
   useEffect(() => {
     if (!isReady) {
@@ -71,34 +103,26 @@ export function CatalogPage(): ReactNode {
 
     async function loadInitialData(): Promise<void> {
       setInitialLoading(true);
+      setProductsLoading(true);
       setInitialError("");
+      setHasLoadedCatalog(false);
 
       try {
-        const [sessionResponse, categoryResponse, discountResponse] =
-          await Promise.all([
-            fetchMiniAppApi(
-              "/api/auth/me",
-              readInitData,
-              authSessionResponseSchema,
-              controller.signal,
-            ),
-            fetchMiniAppApi(
-              "/api/categories",
-              readInitData,
-              categoryListResponseSchema,
-              controller.signal,
-            ),
-            fetchMiniAppApi(
-              `/api/products?discountOnly=true&limit=${String(DISCOUNT_PRODUCTS_LIMIT)}`,
-              readInitData,
-              productListResponseSchema,
-              controller.signal,
-            ),
-          ]);
+        const response = await fetchInitialCatalog(
+          readInitData,
+          controller.signal,
+        );
 
-        setViewer(sessionResponse.data.user);
-        setCategories(categoryResponse.data);
-        setDiscountProducts(discountResponse.data);
+        setViewer(response.user);
+        setCategories(response.categories);
+        setDiscountProducts(response.discountProducts);
+        setProducts(response.products);
+        setDefaultProducts(response.products);
+        setPagination(response.pagination);
+        setDefaultPagination(response.pagination);
+        setCartQuantity(response.cartQuantity);
+        setProductsError("");
+        setHasLoadedCatalog(true);
       } catch (error) {
         if (!controller.signal.aborted) {
           setInitialError(getErrorMessage(error));
@@ -106,6 +130,7 @@ export function CatalogPage(): ReactNode {
       } finally {
         if (!controller.signal.aborted) {
           setInitialLoading(false);
+          setProductsLoading(false);
         }
       }
     }
@@ -115,10 +140,26 @@ export function CatalogPage(): ReactNode {
     return () => {
       controller.abort();
     };
-  }, [isReady, readInitData, retryVersion]);
+  }, [
+    catalogRetryVersion,
+    isReady,
+    readInitData,
+    setCartQuantity,
+  ]);
 
   useEffect(() => {
-    if (!isReady) {
+    if (!isReady || !hasLoadedCatalog) {
+      return;
+    }
+
+    const isDefaultQuery =
+      page === 1 && selectedCategory === "" && search === "";
+
+    if (isDefaultQuery) {
+      setProducts(defaultProducts);
+      setPagination(defaultPagination);
+      setProductsError("");
+      setProductsLoading(false);
       return;
     }
 
@@ -141,14 +182,13 @@ export function CatalogPage(): ReactNode {
       setProductsError("");
 
       try {
-        const response = await fetchMiniAppApi(
+        const response = await requestMiniAppApiJson<ProductListResponse>(
           `/api/products?${query.toString()}`,
           readInitData,
-          productListResponseSchema,
-          controller.signal,
+          { signal: controller.signal },
         );
 
-        setProducts(response.data);
+        setProducts(response.data.map(compactProduct));
         setPagination(response.pagination);
       } catch (error) {
         if (!controller.signal.aborted) {
@@ -167,10 +207,13 @@ export function CatalogPage(): ReactNode {
       controller.abort();
     };
   }, [
+    defaultPagination,
+    defaultProducts,
+    hasLoadedCatalog,
     isReady,
     page,
     readInitData,
-    retryVersion,
+    productsRetryVersion,
     search,
     selectedCategory,
   ]);
@@ -353,7 +396,7 @@ export function CatalogPage(): ReactNode {
           <ErrorState
             message={initialError}
             onRetry={() => {
-              setRetryVersion((value) => value + 1);
+              setCatalogRetryVersion((value) => value + 1);
             }}
           />
         ) : discountProducts.length === 0 ? (
@@ -390,7 +433,7 @@ export function CatalogPage(): ReactNode {
           <ErrorState
             message={productsError}
             onRetry={() => {
-              setRetryVersion((value) => value + 1);
+              setProductsRetryVersion((value) => value + 1);
             }}
           />
         ) : products.length === 0 ? (

@@ -12,7 +12,10 @@ import {
   createColorKeyboard,
 } from "../keyboards/product-options.keyboard.js";
 import { createQuantityKeyboard } from "../keyboards/order.keyboard.js";
-import { findActiveProductById } from "../services/product.service.js";
+import {
+  findActiveProductOptionsById,
+  findActiveProductVariant,
+} from "../services/product.service.js";
 import { showCatalogHelp, showHelp, showMainMenu } from "./menu.handler.js";
 import { showProduct } from "./product.handler.js";
 
@@ -71,7 +74,7 @@ async function handleSizeSelection(
   productId: number,
   variantId: number,
 ): Promise<void> {
-  const product = await findActiveProductById(productId);
+  const product = await findActiveProductOptionsById(productId);
   const variant = product?.variants.find((item) => item.id === variantId);
 
   if (!product || !variant || variant.stock <= 0) {
@@ -103,10 +106,10 @@ async function handleColorSelection(
   productId: number,
   variantId: number,
 ): Promise<void> {
-  const product = await findActiveProductById(productId);
-  const variant = product?.variants.find((item) => item.id === variantId);
+  const selection = await findActiveProductVariant(productId, variantId);
+  const variant = selection?.variant;
 
-  if (!product || !variant || variant.stock <= 0) {
+  if (!selection || !variant) {
     await ctx.reply(
       "Tanlangan variant hozir mavjud emas. Mahsulotni qayta ochib ko‘ring.",
       {
@@ -117,21 +120,21 @@ async function handleColorSelection(
   }
 
   ctx.session.productSelection = {
-    productId: product.id,
+    productId: selection.productId,
     selectedSize: variant.size,
     selectedColor: variant.color,
     productVariantId: variant.id,
   };
   const unitPrice =
-    product.discountPrice !== null &&
-    product.discountPrice < product.price
-      ? product.discountPrice
-      : product.price;
+    selection.discountPrice !== null &&
+    selection.discountPrice < selection.price
+      ? selection.discountPrice
+      : selection.price;
 
   ctx.session.orderDraft = {
-    productId: product.id,
+    productId: selection.productId,
     productVariantId: variant.id,
-    productName: product.name,
+    productName: selection.productName,
     selectedSize: variant.size,
     selectedColor: variant.color,
     unitPrice,
