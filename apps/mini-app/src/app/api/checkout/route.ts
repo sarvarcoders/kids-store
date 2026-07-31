@@ -1,15 +1,17 @@
 import { checkoutResponseSchema } from "@kids-store/shared";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import {
   handleMiniAppApiError,
   parseJsonBody,
 } from "@/lib/api/route-error";
 import { authenticateMiniAppRequest } from "@/lib/auth/request-auth";
+import { createApiErrorResponse } from "@/lib/api/response";
 import { checkoutCart } from "@/lib/checkout/checkout.service";
 import {
   sendCheckoutNotifications,
 } from "@/lib/checkout/notification.service";
+import { consumeMutationPermit } from "@/lib/rate-limit/mutation-rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -19,11 +21,22 @@ export async function POST(
 ): Promise<NextResponse> {
   try {
     const user = authenticateMiniAppRequest(request);
+
+    if (!consumeMutationPermit("checkout", user.id)) {
+      return createApiErrorResponse(
+        429,
+        "RATE_LIMITED",
+        "Buyurtma juda tez yuborildi. Bir oz kutib qayta urinib ko‘ring.",
+      );
+    }
+
     const input = await parseJsonBody(request);
     const result = await checkoutCart(user, input);
 
     if (!result.wasDuplicate) {
-      await sendCheckoutNotifications(user, result.order);
+      after(async () => {
+        await sendCheckoutNotifications(user, result.order);
+      });
     }
 
     const response = checkoutResponseSchema.parse({

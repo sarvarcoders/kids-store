@@ -1,8 +1,8 @@
 import {
-  calculateEffectivePrice,
   cartDtoSchema,
   type CartDto,
-} from "@kids-store/shared";
+} from "@kids-store/shared/cart";
+import { calculateEffectivePrice } from "@kids-store/shared/order-domain";
 import { z } from "zod";
 
 export interface CartRecord {

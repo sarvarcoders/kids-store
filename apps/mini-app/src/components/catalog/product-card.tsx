@@ -1,17 +1,18 @@
-import type { ProductListItemDto } from "@kids-store/shared";
+import type { CatalogProductDto } from "@kids-store/shared/catalog";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { formatUzbekPrice } from "@/lib/format/price";
+import { PRODUCT_IMAGE_BLUR_DATA_URL } from "@/lib/images/placeholder";
 
 export function ProductCard({
   product,
 }: {
-  product: ProductListItemDto;
+  product: CatalogProductDto;
 }): ReactNode {
   const hasDiscount =
-    product.discountPrice !== null &&
+    product.discountPrice !== undefined &&
     product.discountPrice < product.price;
   const currentPrice = hasDiscount
     ? product.discountPrice
@@ -28,15 +29,19 @@ export function ProductCard({
         aria-label={`${product.name} mahsulotini ko‘rish`}
         className="focus-ring block rounded-[1.05rem]"
         href={`/products/${String(product.id)}`}
+        prefetch={false}
       >
         <div className="image-panel relative aspect-[4/5] overflow-hidden rounded-[1.05rem]">
-          {product.primaryImage ? (
+          {product.imageUrl ? (
             <Image
               alt={`${product.name} rasmi`}
+              blurDataURL={PRODUCT_IMAGE_BLUR_DATA_URL}
               className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
               fill
-              sizes="(max-width: 640px) 46vw, 220px"
-              src={product.primaryImage.url}
+              loading="lazy"
+              placeholder="blur"
+              sizes="(max-width: 768px) 50vw, 33vw"
+              src={product.imageUrl}
             />
           ) : (
             <div className="flex h-full items-center justify-center text-5xl">
@@ -52,7 +57,7 @@ export function ProductCard({
 
         <div className="px-1 pb-2 pt-3">
           <p className="text-muted text-[0.68rem] font-bold uppercase tracking-[0.12em]">
-            {product.category.name}
+            {product.categoryName}
           </p>
           <h3 className="mt-1 line-clamp-2 min-h-10 text-sm font-extrabold leading-5">
             {product.name}

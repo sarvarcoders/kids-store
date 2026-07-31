@@ -1,7 +1,7 @@
 import {
   apiErrorResponseSchema,
   type ApiErrorResponse,
-} from "@kids-store/shared";
+} from "@kids-store/shared/catalog";
 import type { ZodType } from "zod";
 
 export const TELEGRAM_INIT_DATA_HEADER = "x-telegram-init-data";

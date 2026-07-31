@@ -13,6 +13,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tests/tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@grammyjs/auto-retry": "^2.0.2",
+    "@grammyjs/runner": "^2.0.3",
     "@kids-store/core": "workspace:*",
     "@kids-store/database": "workspace:*",
     "@kids-store/shared": "workspace:*",

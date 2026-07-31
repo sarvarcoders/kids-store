@@ -1,3 +1,4 @@
+import { FixedWindowRateLimiter } from "@kids-store/core";
 import type { Bot } from "grammy";
 import { z } from "zod";
 
@@ -15,6 +16,10 @@ const publishProductIdSchema = z
   .trim()
   .regex(/^[1-9]\d*$/)
   .transform((value) => databaseIdSchema.parse(value));
+const publishRateLimiter = new FixedWindowRateLimiter({
+  limit: 5,
+  windowMs: 60_000,
+});
 
 function isAdmin(ctx: BotContext): boolean {
   return ctx.from !== undefined && BigInt(ctx.from.id) === env.ADMIN_TELEGRAM_ID;
@@ -41,6 +46,13 @@ export function registerPublishHandler(
         updateId: ctx.update.update_id,
       });
       await ctx.reply("Bu buyruqni bajarishga ruxsat yo‘q.");
+      return;
+    }
+
+    if (!publishRateLimiter.consume(String(ctx.from?.id))) {
+      await ctx.reply(
+        "Juda ko‘p publish so‘rovi yuborildi. Bir oz kutib qayta urinib ko‘ring.",
+      );
       return;
     }
 

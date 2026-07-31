@@ -27,5 +27,12 @@ export {
   type ChannelTelegramGateway,
   type PublishedChannelPost,
 } from "./channel/channel-post.service.js";
-export { sendTelegramTextMessage } from "./telegram/send-message.js";
+export {
+  sendTelegramTextMessage,
+  type TelegramMessageDeliveryOptions,
+} from "./telegram/send-message.js";
 export { runNotificationSafely } from "./notification/run-safely.js";
+export {
+  FixedWindowRateLimiter,
+  type FixedWindowRateLimiterConfig,
+} from "./rate-limit/fixed-window.js";

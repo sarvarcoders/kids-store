@@ -263,6 +263,26 @@ export async function getCartForTelegramUser(
   return loadCartById(cartId);
 }
 
+export async function getCartQuantityForTelegramUser(
+  userInput: unknown,
+): Promise<number> {
+  const user = verifiedTelegramUserDtoSchema.parse(userInput);
+  const result = await prisma.cartItem.aggregate({
+    where: {
+      cart: {
+        customer: {
+          telegramUserId: BigInt(user.id),
+        },
+      },
+    },
+    _sum: {
+      quantity: true,
+    },
+  });
+
+  return result._sum.quantity ?? 0;
+}
+
 export async function addCartItem(
   userInput: unknown,
   input: unknown,

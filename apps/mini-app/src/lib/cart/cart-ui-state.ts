@@ -1,7 +1,7 @@
 import {
   cartDtoSchema,
   type CartDto,
-} from "@kids-store/shared";
+} from "@kids-store/shared/cart";
 import { z } from "zod";
 
 const cartItemIdSchema = z.number().int().positive();

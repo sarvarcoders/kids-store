@@ -1,7 +1,6 @@
 import { InlineKeyboard } from "grammy";
 
 import type {
-  ProductDetails,
   ProductVariantDetails,
 } from "../services/product.service.js";
 import { MENU_CALLBACKS } from "./main-menu.keyboard.js";
@@ -23,7 +22,12 @@ function addButtons(
   });
 }
 
-export function createSizeKeyboard(product: ProductDetails): InlineKeyboard {
+export interface ProductOptions {
+  id: number;
+  variants: ProductVariantDetails[];
+}
+
+export function createSizeKeyboard(product: ProductOptions): InlineKeyboard {
   const keyboard = new InlineKeyboard();
   const variantsBySize = new Map<string, ProductVariantDetails>();
 
@@ -48,7 +52,7 @@ export function createSizeKeyboard(product: ProductDetails): InlineKeyboard {
 }
 
 export function createColorKeyboard(
-  product: ProductDetails,
+  product: ProductOptions,
   selectedSize: string,
 ): InlineKeyboard {
   const keyboard = new InlineKeyboard();

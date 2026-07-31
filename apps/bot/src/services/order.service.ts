@@ -4,12 +4,11 @@ import {
   type CreateOrderInput,
 } from "@kids-store/shared";
 
-import {
-  PrismaOrderRepository,
-  type CreatedOrder,
-  type OrderRepository,
-  type OrderTransaction,
-  type OrderVariantRecord,
+import type {
+  CreatedOrder,
+  OrderRepository,
+  OrderTransaction,
+  OrderVariantRecord,
 } from "./order.repository.js";
 
 const POSTGRES_INTEGER_MAX = 2_147_483_647;
@@ -105,13 +104,16 @@ export async function createOrderInTransaction(
 }
 
 export class OrderService {
-  constructor(
-    private readonly repository: OrderRepository = new PrismaOrderRepository(),
-  ) {}
+  private repository: OrderRepository | null;
+
+  constructor(repository?: OrderRepository) {
+    this.repository = repository ?? null;
+  }
 
   async createOrder(input: unknown): Promise<OrderCreationResult> {
     const validatedInput = createOrderSchema.parse(input);
-    const existingOrder = await this.repository.findByIdempotencyKey(
+    const repository = await this.getRepository();
+    const existingOrder = await repository.findByIdempotencyKey(
       validatedInput.idempotencyKey,
     );
 
@@ -123,7 +125,7 @@ export class OrderService {
     }
 
     try {
-      const order = await this.repository.runInTransaction((transaction) =>
+      const order = await repository.runInTransaction((transaction) =>
         createOrderInTransaction(transaction, validatedInput),
       );
 
@@ -134,6 +136,7 @@ export class OrderService {
     } catch (error) {
       const concurrentlyCreatedOrder =
         await this.findConcurrentDuplicateSafely(
+          repository,
           validatedInput.idempotencyKey,
         );
 
@@ -148,11 +151,23 @@ export class OrderService {
     }
   }
 
+  private async getRepository(): Promise<OrderRepository> {
+    if (this.repository) {
+      return this.repository;
+    }
+
+    const { PrismaOrderRepository } = await import("./order.repository.js");
+    this.repository = new PrismaOrderRepository();
+
+    return this.repository;
+  }
+
   private async findConcurrentDuplicateSafely(
+    repository: OrderRepository,
     idempotencyKey: string,
   ): Promise<CreatedOrder | null> {
     try {
-      return await this.repository.findByIdempotencyKey(idempotencyKey);
+      return await repository.findByIdempotencyKey(idempotencyKey);
     } catch {
       return null;
     }

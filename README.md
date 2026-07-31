@@ -103,6 +103,32 @@ Checkout narx va stockni database’dan transaction ichida qayta o‘qiydi,
 stockni atomic kamaytiradi va idempotency key bilan duplicate orderni
 to‘xtatadi.
 
+### Performance konfiguratsiyasi
+
+Mini App bosh sahifasi authenticated `GET /api/catalog` orqali user,
+kategoriyalar, birinchi mahsulot sahifasi, chegirmali mahsulotlar va cart
+quantity’ni bitta requestda oladi. Authenticated response doim `no-store`;
+userga bog‘liq bo‘lmagan catalog query natijalari serverda 60 soniya cache
+qilinadi. Cart va checkout mutationlari hech qachon cache qilinmaydi.
+
+Bot `@grammyjs/runner` bilan ko‘pi bilan 10 ta update’ni parallel qayta
+ishlaydi. Bitta Telegram user update’lari session race condition bo‘lmasligi
+uchun ketma-ket bajariladi. Telegram 429, vaqtinchalik 5xx va network xatolari
+cheklangan auto-retry bilan boshqariladi.
+
+Vercel serverless runtime uchun `DATABASE_URL` Supabase Supavisor transaction
+pooler manzili bo‘lishi kerak; migration va introspection uchun `DIRECT_URL`
+saqlanadi. Har process Prisma/pg pool limiti:
+
+```dotenv
+DATABASE_POOL_MAX=5
+```
+
+Mini App cart/checkout va bot publish limiterlari in-memory fast guard sifatida
+ishlaydi. Database transaction, idempotency va stock constraintlari data
+correctness uchun asosiy himoya bo‘lib qoladi. Bir nechta instance ishlatilsa,
+global rate limit va bot session uchun Redis kabi shared storage kerak.
+
 ## Admin panel
 
 Admin panel dashboard, mahsulotlar, kategoriyalar, buyurtmalar, mijozlar,

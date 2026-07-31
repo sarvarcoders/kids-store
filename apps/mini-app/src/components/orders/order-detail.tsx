@@ -1,10 +1,10 @@
 "use client";
 
 import {
-  formatOrderStatus,
   orderDetailResponseSchema,
   type OrderDetailDto,
-} from "@kids-store/shared";
+} from "@kids-store/shared/cart";
+import { formatOrderStatus } from "@kids-store/shared/order-notification";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -129,6 +129,7 @@ export function OrderDetail({
       <Link
         className="surface focus-ring inline-flex rounded-full px-4 py-2 text-sm font-extrabold"
         href="/orders"
+        prefetch={false}
       >
         ← Buyurtmalar
       </Link>

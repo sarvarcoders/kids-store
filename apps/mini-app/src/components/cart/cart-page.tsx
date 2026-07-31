@@ -6,7 +6,7 @@ import {
   checkoutResponseSchema,
   type CartItemDto,
   type CheckoutOrderDto,
-} from "@kids-store/shared";
+} from "@kids-store/shared/cart";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -31,6 +31,7 @@ import {
   updateCartQuantityOptimistically,
 } from "@/lib/cart/cart-ui-state";
 import { formatUzbekPrice } from "@/lib/format/price";
+import { PRODUCT_IMAGE_BLUR_DATA_URL } from "@/lib/images/placeholder";
 import {
   hasTelegramMainButton,
   notifyTelegramHaptic,
@@ -67,8 +68,11 @@ function CartItemCard({
           {item.productImage ? (
             <Image
               alt={item.productName}
+              blurDataURL={PRODUCT_IMAGE_BLUR_DATA_URL}
               className="object-cover"
               fill
+              loading="lazy"
+              placeholder="blur"
               sizes="80px"
               src={item.productImage}
             />
@@ -82,6 +86,7 @@ function CartItemCard({
           <Link
             className="focus-ring font-black"
             href={`/products/${String(item.productId)}`}
+            prefetch={false}
           >
             {item.productName}
           </Link>
@@ -401,6 +406,7 @@ export function CartPage(): ReactNode {
           <Link
             className="focus-ring mt-5 inline-flex rounded-xl bg-[var(--brand-purple)] px-5 py-3 font-black text-white"
             href={`/orders/${String(createdOrder.id)}`}
+            prefetch={false}
           >
             Buyurtmani ko‘rish
           </Link>
@@ -453,6 +459,7 @@ export function CartPage(): ReactNode {
           <Link
             className="focus-ring mx-auto mt-5 flex w-fit rounded-xl bg-[var(--brand-purple)] px-5 py-3 font-black text-white"
             href="/catalog"
+            prefetch={false}
           >
             Katalogga o‘tish
           </Link>

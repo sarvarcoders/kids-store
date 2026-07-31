@@ -1,7 +1,7 @@
 import {
   productVariantDtoSchema,
   type ProductVariantDto,
-} from "@kids-store/shared";
+} from "@kids-store/shared/catalog";
 import { z } from "zod";
 
 const variantsSchema = z.array(productVariantDtoSchema);
