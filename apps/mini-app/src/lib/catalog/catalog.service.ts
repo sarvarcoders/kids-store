@@ -179,6 +179,7 @@ export async function listCatalogCategories(): Promise<CategoryDto[]> {
     orderBy: {
       name: "asc",
     },
+    take: 100,
   });
 
   return categories.map((category) => categoryDtoSchema.parse(category));

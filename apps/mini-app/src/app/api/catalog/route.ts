@@ -12,6 +12,7 @@ import {
 } from "@/lib/auth/request-auth";
 import { getCartQuantityForTelegramUser } from "@/lib/cart/cart.service";
 import { getCachedCatalogData } from "@/lib/catalog/catalog-cache";
+import { measureCatalogPayload } from "@/lib/catalog/payload-budget";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,10 +29,17 @@ export async function GET(request: Request): Promise<NextResponse> {
       user,
       cartQuantity,
     });
+    const payloadSize = measureCatalogPayload(response);
+
+    if (!payloadSize.withinBudget) {
+      logServerError("catalog-payload-budget", new Error("CATALOG_PAYLOAD_TOO_LARGE"));
+    }
 
     return NextResponse.json(response, {
       headers: {
         "Cache-Control": "private, no-store",
+        "Server-Timing": `catalog-payload;desc=gzip-${String(payloadSize.gzipBytes)}-bytes`,
+        "X-Catalog-Gzip-Bytes": String(payloadSize.gzipBytes),
       },
     });
   } catch (error) {

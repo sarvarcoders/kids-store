@@ -26,19 +26,19 @@ void test("bir xil mutation key concurrent double submitni bir marta bajaradi", 
   assert.equal(calls, 1);
 });
 
-void test("rate limit ortiqcha mutationni bloklaydi", () => {
+void test("rate limit ortiqcha mutationni bloklaydi", async () => {
   resetRateLimitsForTests();
-  assert.doesNotThrow(() =>
-    { assertRateLimit({
+  await assert.doesNotReject(async () =>
+    { await assertRateLimit({
       key: "admin:1",
       limit: 1,
       nowMs: 1_000,
       windowMs: 1_000,
     }); },
   );
-  assert.throws(
-    () =>
-      { assertRateLimit({
+  await assert.rejects(
+    async () =>
+      { await assertRateLimit({
         key: "admin:1",
         limit: 1,
         nowMs: 1_001,

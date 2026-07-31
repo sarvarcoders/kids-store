@@ -1,18 +1,14 @@
-import {
-  catalogResponseSchema,
-  type CatalogResponse,
-} from "@kids-store/shared/catalog";
+import type { CatalogResponse } from "@kids-store/shared/catalog";
 
-import { fetchMiniAppApi } from "../api/client";
+import { requestMiniAppApiJson } from "../api/client";
 
 export async function fetchInitialCatalog(
   readInitData: () => string,
   signal?: AbortSignal,
 ): Promise<CatalogResponse> {
-  return fetchMiniAppApi(
+  return requestMiniAppApiJson<CatalogResponse>(
     "/api/catalog",
     readInitData,
-    catalogResponseSchema,
-    signal,
+    signal === undefined ? {} : { signal },
   );
 }

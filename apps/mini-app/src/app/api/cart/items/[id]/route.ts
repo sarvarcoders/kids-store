@@ -29,7 +29,7 @@ export async function PATCH(
   try {
     const user = authenticateMiniAppRequest(request);
 
-    if (!consumeMutationPermit("cart", user.id)) {
+    if (!(await consumeMutationPermit("cart", user.id))) {
       return createApiErrorResponse(
         429,
         "RATE_LIMITED",
@@ -59,7 +59,7 @@ export async function DELETE(
   try {
     const user = authenticateMiniAppRequest(request);
 
-    if (!consumeMutationPermit("cart", user.id)) {
+    if (!(await consumeMutationPermit("cart", user.id))) {
       return createApiErrorResponse(
         429,
         "RATE_LIMITED",

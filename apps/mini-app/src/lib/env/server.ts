@@ -33,6 +33,7 @@ const serverEnvSchema = z
       .default("false")
       .transform((value) => value === "true"),
     NEXT_PUBLIC_MINI_APP_URL: optionalUrlSchema,
+    CACHE_REVALIDATION_SECRET: z.string().min(32).max(256).optional(),
   })
   .superRefine((value, context) => {
     const developmentMockEnabled =

@@ -6,7 +6,7 @@ import {
   type CategoryDto,
   type PaginationDto,
 } from "@kids-store/shared";
-import { unstable_cache } from "next/cache";
+import { revalidateTag, unstable_cache } from "next/cache";
 
 import {
   listCatalogCategories,
@@ -53,3 +53,7 @@ export const getCachedCatalogData = unstable_cache(
     tags: ["catalog"],
   },
 );
+
+export function invalidateCatalogCache(): void {
+  revalidateTag("catalog", { expire: 0 });
+}

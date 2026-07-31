@@ -1,10 +1,10 @@
 "use client";
 
-import {
-  productListResponseSchema,
-  type CatalogProductDto,
-  type CategoryDto,
-  type PaginationDto,
+import type {
+  CatalogProductDto,
+  CategoryDto,
+  PaginationDto,
+  ProductListResponse,
 } from "@kids-store/shared/catalog";
 import type { VerifiedTelegramUserDto } from "@kids-store/shared/telegram";
 import dynamic from "next/dynamic";
@@ -15,10 +15,9 @@ import {
   type SyntheticEvent,
 } from "react";
 
-import { fetchMiniAppApi } from "@/lib/api/client";
+import { requestMiniAppApiJson } from "@/lib/api/client";
 import { useCart } from "@/components/cart/cart-provider";
 import { useTelegram } from "@/components/telegram/telegram-provider";
-import { compactProductListItem } from "@/lib/catalog/product-dto";
 import { fetchInitialCatalog } from "@/lib/catalog/catalog-client";
 import {
   EmptyState,
@@ -30,9 +29,28 @@ const PRODUCTS_PER_PAGE = 12;
 const ProductGrid = dynamic(
   () => import("./product-grid").then((module) => module.ProductGrid),
   {
+    ssr: false,
     loading: () => <LoadingState label="Mahsulotlar ko‘rsatilmoqda" />,
   },
 );
+
+function compactProduct(
+  product: ProductListResponse["data"][number],
+): CatalogProductDto {
+  return {
+    id: product.id,
+    name: product.name,
+    price: product.price,
+    categoryName: product.category.name,
+    availableSizes: product.availableSizes,
+    ...(product.discountPrice === null
+      ? {}
+      : { discountPrice: product.discountPrice }),
+    ...(product.primaryImage === null
+      ? {}
+      : { imageUrl: product.primaryImage.url }),
+  };
+}
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error
@@ -164,14 +182,13 @@ export function CatalogPage(): ReactNode {
       setProductsError("");
 
       try {
-        const response = await fetchMiniAppApi(
+        const response = await requestMiniAppApiJson<ProductListResponse>(
           `/api/products?${query.toString()}`,
           readInitData,
-          productListResponseSchema,
-          controller.signal,
+          { signal: controller.signal },
         );
 
-        setProducts(response.data.map(compactProductListItem));
+        setProducts(response.data.map(compactProduct));
         setPagination(response.pagination);
       } catch (error) {
         if (!controller.signal.aborted) {

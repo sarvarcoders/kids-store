@@ -7,11 +7,34 @@ import {
   type OrderNotificationInput,
   type VerifiedTelegramUserDto,
 } from "@kids-store/shared";
-import { sendTelegramTextMessage } from "@kids-store/core";
+import {
+  createNotificationQueue,
+  sendTelegramTextMessage,
+  type NotificationJobData,
+  type NotificationQueueHandle,
+} from "@kids-store/core";
 
 import { logServerError } from "../api/response";
 import { serverEnv } from "../env/server";
+import {
+  getMiniAppRedisProducer,
+  miniAppRedisConfig,
+} from "../redis/server";
 import { runNotificationSafely } from "./notification-runner";
+
+const notificationQueue: NotificationQueueHandle | undefined = (() => {
+  const connection = getMiniAppRedisProducer();
+
+  return connection === undefined || miniAppRedisConfig === null
+    ? undefined
+    : createNotificationQueue({
+        connection,
+        keyPrefix: miniAppRedisConfig.keyPrefix,
+        onError(error) {
+          logServerError("checkout-notification-queue", error);
+        },
+      });
+})();
 
 async function sendTelegramMessage(
   chatId: string,
@@ -24,6 +47,19 @@ async function sendTelegramMessage(
   }
 
   await sendTelegramTextMessage({ botToken, chatId, text });
+}
+
+async function enqueueOrSend(notification: NotificationJobData): Promise<void> {
+  if (notificationQueue) {
+    try {
+      await notificationQueue.enqueue(notification);
+      return;
+    } catch (error) {
+      logServerError("checkout-notification-queue-fallback", error);
+    }
+  }
+
+  await sendTelegramMessage(notification.chatId, notification.text);
 }
 
 async function deliverCheckoutNotifications(
@@ -49,21 +85,27 @@ async function deliverCheckoutNotifications(
     })),
   };
   const adminId = serverEnv.ADMIN_TELEGRAM_ID;
-  const notifications = [
-    sendTelegramMessage(
-      user.id,
-      formatCustomerOrderNotification(notification),
-    ),
+  const notifications: NotificationJobData[] = [
+    {
+      chatId: user.id,
+      eventId: `checkout-${String(order.id)}-customer`,
+      kind: "checkout_customer",
+      text: formatCustomerOrderNotification(notification),
+    },
     ...(adminId === undefined
       ? []
       : [
-          sendTelegramMessage(
-            adminId,
-            formatAdminOrderNotification(notification),
-          ),
+          {
+            chatId: adminId,
+            eventId: `checkout-${String(order.id)}-admin`,
+            kind: "checkout_admin" as const,
+            text: formatAdminOrderNotification(notification),
+          },
         ]),
   ];
-  const results = await Promise.allSettled(notifications);
+  const results = await Promise.allSettled(
+    notifications.map(enqueueOrSend),
+  );
 
   results.forEach((result, index) => {
     if (result.status === "rejected") {

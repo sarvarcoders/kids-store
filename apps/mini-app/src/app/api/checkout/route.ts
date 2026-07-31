@@ -12,6 +12,7 @@ import {
   sendCheckoutNotifications,
 } from "@/lib/checkout/notification.service";
 import { consumeMutationPermit } from "@/lib/rate-limit/mutation-rate-limit";
+import { invalidateCatalogCache } from "@/lib/catalog/catalog-cache";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -22,7 +23,7 @@ export async function POST(
   try {
     const user = authenticateMiniAppRequest(request);
 
-    if (!consumeMutationPermit("checkout", user.id)) {
+    if (!(await consumeMutationPermit("checkout", user.id))) {
       return createApiErrorResponse(
         429,
         "RATE_LIMITED",
@@ -34,6 +35,7 @@ export async function POST(
     const result = await checkoutCart(user, input);
 
     if (!result.wasDuplicate) {
+      invalidateCatalogCache();
       after(async () => {
         await sendCheckoutNotifications(user, result.order);
       });

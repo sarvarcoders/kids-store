@@ -1,9 +1,14 @@
-import { FixedWindowRateLimiter } from "@kids-store/core";
+import { ResilientRateLimiter } from "@kids-store/core";
 import type { Bot } from "grammy";
 import { z } from "zod";
 
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
+import {
+  botRedisConfig,
+  getBotRedisProducer,
+  logRedisFallback,
+} from "../config/redis.js";
 import { databaseIdSchema } from "../config/validation.js";
 import {
   ChannelPostServiceError,
@@ -16,8 +21,12 @@ const publishProductIdSchema = z
   .trim()
   .regex(/^[1-9]\d*$/)
   .transform((value) => databaseIdSchema.parse(value));
-const publishRateLimiter = new FixedWindowRateLimiter({
+const publishRateLimiter = new ResilientRateLimiter({
+  keyPrefix: botRedisConfig?.keyPrefix ?? "kids-store",
   limit: 5,
+  onRedisError: logRedisFallback,
+  redis: getBotRedisProducer() ?? null,
+  scope: "bot-publish",
   windowMs: 60_000,
 });
 
@@ -41,7 +50,9 @@ export function registerPublishHandler(
   channelPostService: ChannelPostService,
 ): void {
   bot.command("publish", async (ctx) => {
-    if (!isAdmin(ctx)) {
+    const telegramUserId = ctx.from?.id;
+
+    if (telegramUserId === undefined || !isAdmin(ctx)) {
       logger.warn("Ruxsatsiz /publish urinishi rad etildi", {
         updateId: ctx.update.update_id,
       });
@@ -49,7 +60,7 @@ export function registerPublishHandler(
       return;
     }
 
-    if (!publishRateLimiter.consume(String(ctx.from?.id))) {
+    if (!(await publishRateLimiter.consume(String(telegramUserId))).allowed) {
       await ctx.reply(
         "Juda ko‘p publish so‘rovi yuborildi. Bir oz kutib qayta urinib ko‘ring.",
       );

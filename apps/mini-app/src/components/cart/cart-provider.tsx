@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  cartResponseSchema,
-  type CartDto,
-} from "@kids-store/shared/cart";
+import type { CartDto, CartResponse } from "@kids-store/shared/cart";
 import {
   createContext,
   useCallback,
@@ -16,7 +13,7 @@ import {
 import { usePathname } from "next/navigation";
 
 import { useTelegram } from "@/components/telegram/telegram-provider";
-import { fetchMiniAppApi } from "@/lib/api/client";
+import { requestMiniAppApiJson } from "@/lib/api/client";
 
 interface CartContextValue {
   cart: CartDto | null;
@@ -57,10 +54,9 @@ export function CartProvider({
     setError("");
 
     try {
-      const response = await fetchMiniAppApi(
+      const response = await requestMiniAppApiJson<CartResponse>(
         "/api/cart",
         readInitData,
-        cartResponseSchema,
       );
       setCart(response.data);
       setCartQuantityState(response.data.totalQuantity);
@@ -100,10 +96,8 @@ export function CartProvider({
   }, []);
 
   const replaceCart = useCallback((nextCart: CartDto): void => {
-    const parsedCart = cartResponseSchema.parse({ data: nextCart }).data;
-
-    setCart(parsedCart);
-    setCartQuantityState(parsedCart.totalQuantity);
+    setCart(nextCart);
+    setCartQuantityState(nextCart.totalQuantity);
     setError("");
     setIsLoading(false);
   }, []);

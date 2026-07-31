@@ -36,3 +36,45 @@ export {
   FixedWindowRateLimiter,
   type FixedWindowRateLimiterConfig,
 } from "./rate-limit/fixed-window.js";
+export {
+  ResilientRateLimiter,
+  type RateLimitDecision,
+  type RedisEvalClient,
+  type ResilientRateLimiterConfig,
+} from "./rate-limit/resilient-rate-limiter.js";
+export {
+  closeRedisProducers,
+  createRedisConnection,
+  getRedisProducer,
+  parseRedisRuntimeConfig,
+  type RedisConnectionMode,
+  type RedisRuntimeConfig,
+} from "./redis/redis-client.js";
+export {
+  RedisSessionStorage,
+  type RedisSessionClient,
+  type RedisSessionStorageConfig,
+} from "./session/redis-session-storage.js";
+export {
+  IdempotencyInProgressError,
+  ResilientIdempotencyStore,
+  type IdempotencyResult,
+  type RedisIdempotencyClient,
+  type ResilientIdempotencyStoreConfig,
+} from "./idempotency/resilient-idempotency-store.js";
+export {
+  hasMatchingRevalidationSecret,
+  requestCatalogRevalidation,
+  type CatalogRevalidationConfig,
+} from "./cache/catalog-revalidation.js";
+export {
+  createNotificationQueue,
+  createNotificationWorker,
+  notificationJobSchema,
+  type DeadLetterJobData,
+  type NotificationJobData,
+  type NotificationQueueConfig,
+  type NotificationQueueHandle,
+  type NotificationWorkerConfig,
+  type NotificationWorkerHandle,
+} from "./queue/notification-queue.js";

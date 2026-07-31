@@ -74,8 +74,10 @@ Allowlistdagi foydalanuvchi `/admin` komandasini yuborganda bot
 `⚙️ Admin panel` Web App tugmasini ko‘rsatadi. Botning mavjud
 `🛍 Do‘kon` default menu tugmasi o‘zgarmaydi.
 
-Tugallanmagan bot checkout sessioni process memory’sida saqlanadi va restartda
-yo‘qoladi. Database’ga yozilgan buyurtmalar saqlanib qoladi.
+`REDIS_URL` sozlanganda tugallanmagan bot checkout sessioni 24 soat saqlanadi
+va process restartidan keyin tiklanadi. Redis sozlanmagan lokal developmentda
+session memory fallback’da qoladi va restartda yo‘qoladi. Database’ga yozilgan
+buyurtmalar har ikki holatda ham saqlanib qoladi.
 
 ## Telegram Mini App
 
@@ -105,6 +107,32 @@ to‘xtatadi.
 
 ### Performance konfiguratsiyasi
 
+Production reliability uchun bot, Mini App va Admin bir xil Redis cluster’dan
+foydalanadi. TLS yoqilgan `rediss://` URL tavsiya qilinadi; Redis eviction
+policy `noeviction` bo‘lishi kerak:
+
+```dotenv
+REDIS_URL=rediss://<redis-host>:<port>
+REDIS_KEY_PREFIX=kids-store
+CACHE_REVALIDATION_SECRET=<kamida-32-belgili-tasodifiy-secret>
+CATALOG_REVALIDATION_URL=https://<mini-app-domain>/api/internal/catalog/revalidate
+```
+
+`REDIS_URL` berilganda cart/checkout/publish/admin mutation rate-limitlari
+instance’lar orasida umumiy bo‘ladi, bot conversation sessionlari 24 soat
+saqlanadi va admin mutation idempotency distributed lock bilan ishlaydi.
+Mini App checkout notificationlarini Redis queue’ga yozadi; bot processi ularni
+5 ta parallel worker bilan yuboradi, exponential backoff asosida 4 marta
+urinadi va oxirgi xatoni dead-letter queue’da saqlaydi. Redis sozlanmagan lokal
+developmentda mavjud to‘g‘ridan-to‘g‘ri notification va in-memory fallback
+ishlashda davom etadi.
+
+Product, category yoki stock o‘zgarganda katalog cache’i secure internal route
+orqali darhol invalidatsiya qilinadi. `CACHE_REVALIDATION_SECRET` Mini App,
+Admin va bot environmentlarida bir xil; `CATALOG_REVALIDATION_URL` esa Admin
+va botda Mini App production endpointiga qarashi kerak. Secret client bundle’ga
+chiqmaydi.
+
 Mini App bosh sahifasi authenticated `GET /api/catalog` orqali user,
 kategoriyalar, birinchi mahsulot sahifasi, chegirmali mahsulotlar va cart
 quantity’ni bitta requestda oladi. Authenticated response doim `no-store`;
@@ -124,10 +152,10 @@ saqlanadi. Har process Prisma/pg pool limiti:
 DATABASE_POOL_MAX=5
 ```
 
-Mini App cart/checkout va bot publish limiterlari in-memory fast guard sifatida
-ishlaydi. Database transaction, idempotency va stock constraintlari data
-correctness uchun asosiy himoya bo‘lib qoladi. Bir nechta instance ishlatilsa,
-global rate limit va bot session uchun Redis kabi shared storage kerak.
+`GET /api/catalog` 12 ta asosiy, 6 ta chegirmali mahsulot va ko‘pi bilan 100 ta
+kategoriyani qaytaradi. Qolgan mahsulotlar eski paginated `GET /api/products`
+orqali olinadi. Response `X-Catalog-Gzip-Bytes` va `Server-Timing` bilan
+o‘lchanadi; regression testi 100 KB gzip limitini tekshiradi.
 
 ## Admin panel
 
@@ -179,10 +207,9 @@ cheklangan.
 5. `AdminAuditLog` migration production database’ga deploy qilinganidan keyin
    panelni ishga tushiring.
 
-In-memory rate limit va idempotency cache serverless instansiyalar orasida
-umumiy emas. Katta production deployment uchun Redis kabi shared storage
-tavsiya qilinadi. Database transaction, unique constraint va conditional order
-status update data integrity’ni saqlaydi.
+Admin mutation rate-limit va idempotency Redis sozlanganda barcha serverless
+instance’lar orasida umumiy ishlaydi. Database transaction, unique constraint
+va conditional order status update data integrity’ni saqlaydi.
 
 ## Tekshiruv va build
 
@@ -191,6 +218,7 @@ pnpm typecheck
 pnpm lint
 pnpm test
 pnpm build
+pnpm check:mini-app-bundle
 ```
 
 Alohida ilovalar:

@@ -24,6 +24,7 @@ import {
   formatOrderConfirmation,
   type CreatedOrderMessageInput,
 } from "../services/order-message.formatter.js";
+import { revalidateCatalogAfterStockChange } from "../services/catalog-revalidation.js";
 import {
   OrderServiceError,
   type OrderService,
@@ -400,6 +401,7 @@ async function handleConfirmCallback(
     );
 
     if (!result.wasDuplicate) {
+      await revalidateCatalogAfterStockChange();
       await sendAdminNotification(ctx, message);
     }
   } catch (error) {

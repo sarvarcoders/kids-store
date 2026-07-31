@@ -37,7 +37,7 @@ export async function DELETE(
   try {
     const user = authenticateMiniAppRequest(request);
 
-    if (!consumeMutationPermit("cart", user.id)) {
+    if (!(await consumeMutationPermit("cart", user.id))) {
       return createApiErrorResponse(
         429,
         "RATE_LIMITED",

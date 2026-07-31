@@ -93,7 +93,7 @@ export function formatCatalogProduct(
         .filter((variant) => variant.stock > 0)
         .map((variant) => variant.size),
     ),
-  );
+  ).slice(0, 12);
   const discountPrice =
     product.discountPrice === null
       ? {}

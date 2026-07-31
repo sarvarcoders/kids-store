@@ -1,7 +1,3 @@
-import {
-  apiErrorResponseSchema,
-  type ApiErrorResponse,
-} from "@kids-store/shared/catalog";
 import type { ZodType } from "zod";
 
 export const TELEGRAM_INIT_DATA_HEADER = "x-telegram-init-data";
@@ -44,13 +40,25 @@ export async function requestMiniAppApi<T>(
   schema: ZodType<T>,
   options: MiniAppApiRequestOptions = {},
 ): Promise<T> {
+  const payload = await requestMiniAppApiJson<unknown>(
+    path,
+    initDataSource,
+    options,
+  );
+
+  return schema.parse(payload);
+}
+
+export async function requestMiniAppApiJson<T>(
+  path: string,
+  initDataSource: TelegramInitDataSource,
+  options: MiniAppApiRequestOptions = {},
+): Promise<T> {
   const initData =
     typeof initDataSource === "function"
       ? initDataSource()
       : initDataSource;
-  const headers = new Headers({
-    Accept: "application/json",
-  });
+  const headers = new Headers({ Accept: "application/json" });
 
   if (options.body !== undefined) {
     headers.set("Content-Type", "application/json");
@@ -74,19 +82,26 @@ export async function requestMiniAppApi<T>(
   const payload: unknown = await response.json();
 
   if (!response.ok) {
-    const parsedError = apiErrorResponseSchema.safeParse(payload);
-    const error: ApiErrorResponse = parsedError.success
-      ? parsedError.data
-      : {
-          error: {
-            code: "UNEXPECTED_RESPONSE",
-            message:
-              "Ma’lumotni yuklab bo‘lmadi. Keyinroq qayta urinib ko‘ring.",
-          },
-        };
-
-    throw new ApiClientError(error.error.message, response.status);
+    throw new ApiClientError(getSafeApiErrorMessage(payload), response.status);
   }
 
-  return schema.parse(payload);
+  return payload as T;
+}
+
+function getSafeApiErrorMessage(payload: unknown): string {
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "error" in payload &&
+    typeof payload.error === "object" &&
+    payload.error !== null &&
+    "message" in payload.error &&
+    typeof payload.error.message === "string" &&
+    payload.error.message.trim().length > 0 &&
+    payload.error.message.length <= 300
+  ) {
+    return payload.error.message;
+  }
+
+  return "Ma’lumotni yuklab bo‘lmadi. Keyinroq qayta urinib ko‘ring.";
 }

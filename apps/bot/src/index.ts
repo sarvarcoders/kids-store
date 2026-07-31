@@ -1,5 +1,6 @@
 import { autoRetry } from "@grammyjs/auto-retry";
 import { run, sequentialize } from "@grammyjs/runner";
+import { closeRedisProducers } from "@kids-store/core";
 import { Bot, session } from "grammy";
 
 import { env } from "./config/env.js";
@@ -17,6 +18,8 @@ import { registerPublishHandler } from "./handlers/publish.handler.js";
 import { registerStartHandler } from "./handlers/start.handler.js";
 import { ChannelPostService } from "./services/channel-post.service.js";
 import { OrderService } from "./services/order.service.js";
+import { startBotNotificationWorker } from "./services/notification-worker.js";
+import { createBotSessionStorage } from "./services/session-storage.js";
 import {
   createInitialSession,
   type BotContext,
@@ -35,6 +38,7 @@ bot.use(
   session({
     initial: createInitialSession,
     getSessionKey: getBotSessionKey,
+    storage: createBotSessionStorage(),
   }),
 );
 
@@ -55,6 +59,7 @@ bot.catch((botError) => {
 
 let isStopping = false;
 let runnerHandle: ReturnType<typeof run> | undefined;
+let notificationWorker: ReturnType<typeof startBotNotificationWorker>;
 
 async function stopBot(signal: NodeJS.Signals): Promise<void> {
   if (isStopping) {
@@ -66,6 +71,8 @@ async function stopBot(signal: NodeJS.Signals): Promise<void> {
 
   try {
     await runnerHandle?.stop();
+    await notificationWorker?.close();
+    await closeRedisProducers();
     logger.info("Bot muvaffaqiyatli to‘xtatildi", { signal });
   } catch (error) {
     logger.error("Botni to‘xtatishda xato yuz berdi", error, { signal });
@@ -77,6 +84,7 @@ process.once("SIGTERM", () => void stopBot("SIGTERM"));
 
 try {
   await bot.init();
+  notificationWorker = startBotNotificationWorker();
   logger.info("Telegram bot ishga tushdi", {
     concurrency: BOT_RUNNER_CONCURRENCY,
     username: bot.botInfo.username,

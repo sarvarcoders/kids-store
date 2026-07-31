@@ -13,6 +13,7 @@
     "build": "pnpm -r --workspace-concurrency=1 --if-present build",
     "build:admin": "pnpm --filter @kids-store/admin build",
     "build:mini-app": "pnpm --filter @kids-store/mini-app build",
+    "check:mini-app-bundle": "pnpm --filter @kids-store/mini-app check:bundle",
     "dev": "pnpm --filter @kids-store/bot dev",
     "dev:admin": "pnpm --filter @kids-store/admin dev",
     "dev:mini-app": "pnpm --filter @kids-store/mini-app dev",

@@ -31,6 +31,19 @@ const adminServerEnvSchema = z.object({
   ADMIN_TELEGRAM_IDS: adminTelegramIdsSchema,
   ADMIN_SESSION_SECRET: adminSessionSecretSchema,
   NEXT_PUBLIC_ADMIN_URL: optionalUrlSchema,
+  CATALOG_REVALIDATION_URL: optionalUrlSchema,
+  CACHE_REVALIDATION_SECRET: z.string().min(32).max(256).optional(),
+}).superRefine((value, context) => {
+  const hasUrl = value.CATALOG_REVALIDATION_URL !== undefined;
+  const hasSecret = value.CACHE_REVALIDATION_SECRET !== undefined;
+
+  if (hasUrl !== hasSecret) {
+    context.addIssue({
+      code: "custom",
+      path: [hasUrl ? "CACHE_REVALIDATION_SECRET" : "CATALOG_REVALIDATION_URL"],
+      message: "Catalog cache invalidation URL va secret birga berilishi kerak",
+    });
+  }
 });
 
 export type AdminServerEnv = z.infer<typeof adminServerEnvSchema>;

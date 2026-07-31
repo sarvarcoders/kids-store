@@ -10,6 +10,7 @@ const databaseIdSchema = z.coerce
 const moneySchema = z.number().int().nonnegative();
 const httpsUrlSchema = z
   .url()
+  .max(2_048)
   .refine((value) => value.startsWith("https://"), {
     message: "Rasm URL HTTPS bo‘lishi kerak",
   });
@@ -89,7 +90,7 @@ export const catalogProductDtoSchema = z.object({
   discountPrice: moneySchema.optional(),
   categoryName: z.string().trim().min(1).max(120),
   imageUrl: httpsUrlSchema.optional(),
-  availableSizes: z.array(z.string().trim().min(1).max(50)).max(50),
+  availableSizes: z.array(z.string().trim().min(1).max(50)).max(12),
 });
 
 export const productDetailDtoSchema = productListItemDtoSchema
@@ -113,7 +114,7 @@ export const paginationDtoSchema = z.object({
 });
 
 export const categoryListResponseSchema = z.object({
-  data: z.array(categoryDtoSchema),
+  data: z.array(categoryDtoSchema).max(100),
 });
 
 export const productListResponseSchema = z.object({
@@ -126,9 +127,9 @@ export const productDetailResponseSchema = z.object({
 });
 
 export const catalogResponseSchema = z.object({
-  categories: z.array(categoryDtoSchema),
-  products: z.array(catalogProductDtoSchema),
-  discountProducts: z.array(catalogProductDtoSchema),
+  categories: z.array(categoryDtoSchema).max(100),
+  products: z.array(catalogProductDtoSchema).max(24),
+  discountProducts: z.array(catalogProductDtoSchema).max(12),
   user: verifiedTelegramUserDtoSchema,
   pagination: paginationDtoSchema,
   cartQuantity: z.number().int().nonnegative(),
