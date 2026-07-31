@@ -1,11 +1,10 @@
 "use client";
 
-import {
-  orderListResponseSchema,
-  type OrderListItemDto,
+import type {
+  OrderListItemDto,
+  OrderListResponse,
 } from "@kids-store/shared/cart";
 import type { PaginationDto } from "@kids-store/shared/catalog";
-import { formatOrderStatus } from "@kids-store/shared/order-notification";
 import Link from "next/link";
 import {
   useEffect,
@@ -19,8 +18,9 @@ import {
   ErrorState,
   LoadingState,
 } from "@/components/ui/status-state";
-import { fetchMiniAppApi } from "@/lib/api/client";
+import { requestMiniAppApiJson } from "@/lib/api/client";
 import { formatUzbekPrice } from "@/lib/format/price";
+import { formatMiniAppOrderStatus } from "@/lib/format/order-status";
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error
@@ -63,11 +63,10 @@ export function OrdersPage(): ReactNode {
       setError("");
 
       try {
-        const response = await fetchMiniAppApi(
+        const response = await requestMiniAppApiJson<OrderListResponse>(
           `/api/orders?page=${String(page)}&limit=10`,
           readInitData,
-          orderListResponseSchema,
-          controller.signal,
+          { signal: controller.signal },
         );
         setOrders(response.data);
         setPagination(response.pagination);
@@ -145,7 +144,7 @@ export function OrdersPage(): ReactNode {
                       </p>
                     </div>
                     <span className="rounded-full bg-[var(--soft-panel)] px-3 py-1 text-xs font-bold">
-                      {formatOrderStatus(order.status)}
+                      {formatMiniAppOrderStatus(order.status)}
                     </span>
                   </div>
                   <div className="mt-4 flex items-end justify-between gap-3">

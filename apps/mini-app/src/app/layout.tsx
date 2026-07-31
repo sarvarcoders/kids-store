@@ -32,6 +32,8 @@ export default function RootLayout({
   return (
     <html lang="uz" suppressHydrationWarning>
       <head>
+        <link href="https://telegram.org" rel="dns-prefetch" />
+        <link href="https://telegram.org" rel="preconnect" />
         <Script
           id="telegram-web-app-sdk"
           src="https://telegram.org/js/telegram-web-app.js"

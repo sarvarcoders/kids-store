@@ -61,3 +61,8 @@ void test("clear optimistic state empty cart qaytaradi", () => {
   assert.equal(empty.totalQuantity, 0);
   assert.equal(empty.totalAmount, 0);
 });
+
+void test("optimistic cart noto‘g‘ri quantityni rad etadi", () => {
+  assert.throws(() => updateCartQuantityOptimistically(cart, 10, 0));
+  assert.throws(() => updateCartQuantityOptimistically(cart, 10, 6));
+});

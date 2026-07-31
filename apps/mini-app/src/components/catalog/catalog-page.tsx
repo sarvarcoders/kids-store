@@ -33,7 +33,6 @@ const ProductGrid = dynamic(
     loading: () => <LoadingState label="Mahsulotlar ko‘rsatilmoqda" />,
   },
 );
-
 function compactProduct(
   product: ProductListResponse["data"][number],
 ): CatalogProductDto {
@@ -93,6 +92,11 @@ export function CatalogPage(): ReactNode {
   const [hasLoadedCatalog, setHasLoadedCatalog] = useState(false);
   const [catalogRetryVersion, setCatalogRetryVersion] = useState(0);
   const [productsRetryVersion, setProductsRetryVersion] = useState(0);
+
+  useEffect(() => {
+    // Image runtime va grid chunkini auth/API kutish vaqtida parallel yuklaydi.
+    void import("./product-grid");
+  }, []);
 
   useEffect(() => {
     if (!isReady) {
@@ -255,8 +259,8 @@ export function CatalogPage(): ReactNode {
     : "Kichkintoylar uchun tanlangan";
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-3xl px-3 pb-12 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5">
-      <header className="hero-card relative overflow-hidden rounded-[2rem] px-5 pb-6 pt-5 text-white shadow-[0_20px_50px_rgba(78,52,140,0.25)]">
+    <main className="page-shell mx-auto min-h-screen w-full max-w-3xl px-3 pb-12 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5">
+      <header className="hero-card relative overflow-hidden rounded-[2rem] px-5 pb-6 pt-5 text-white">
         <div
           aria-hidden="true"
           className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-white/10"
@@ -270,11 +274,9 @@ export function CatalogPage(): ReactNode {
             <p className="text-xs font-black uppercase tracking-[0.24em] text-white/75">
               Kids Store
             </p>
-            <span
-              aria-label="Faqat katalog rejimi"
-              className="rounded-full bg-white/15 px-3 py-1 text-[0.68rem] font-bold"
-            >
-              Katalog MVP
+            <span className="hero-badge">
+              <span aria-hidden="true">✦</span>
+              Yangi kolleksiya
             </span>
           </div>
           <p className="mt-8 text-sm font-semibold text-white/75">
@@ -293,8 +295,16 @@ export function CatalogPage(): ReactNode {
               Mahsulot qidirish
             </label>
             <div className="flex items-center gap-2 rounded-[1.2rem] bg-white p-1.5 shadow-lg">
-              <span aria-hidden="true" className="pl-2 text-lg">
-                🔎
+              <span aria-hidden="true" className="pl-2 text-slate-500">
+                <svg
+                  fill="none"
+                  height="19"
+                  viewBox="0 0 24 24"
+                  width="19"
+                >
+                  <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="2" />
+                  <path d="m16 16 4 4" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
+                </svg>
               </span>
               <input
                 className="focus-ring min-w-0 flex-1 rounded-xl px-1 py-2.5 text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
@@ -324,6 +334,10 @@ export function CatalogPage(): ReactNode {
               </p>
             ) : null}
           </form>
+          <div className="hero-benefits" aria-label="Do‘kon afzalliklari">
+            <span>✓ Sifatli mato</span>
+            <span>✓ Tez yetkazish</span>
+          </div>
         </div>
       </header>
 
@@ -342,7 +356,7 @@ export function CatalogPage(): ReactNode {
 
         <div
           aria-label="Mahsulot kategoriyalari"
-          className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-2 sm:-mx-5 sm:px-5"
+          className="category-scroll -mx-3 flex gap-2 overflow-x-auto px-3 pb-2 sm:-mx-5 sm:px-5"
         >
           <button
             aria-pressed={selectedCategory === ""}
@@ -372,7 +386,7 @@ export function CatalogPage(): ReactNode {
         </div>
       </section>
 
-      <section aria-labelledby="discount-title" className="mt-7">
+      <section aria-labelledby="discount-title" className="content-section mt-7">
         <div className="mb-3 flex items-end justify-between gap-3 px-1">
           <div>
             <p className="eyebrow text-[var(--brand-coral)]">
@@ -409,7 +423,7 @@ export function CatalogPage(): ReactNode {
         )}
       </section>
 
-      <section aria-labelledby="all-products-title" className="mt-9">
+      <section aria-labelledby="all-products-title" className="content-section mt-9">
         <div className="mb-3 flex items-end justify-between gap-3 px-1">
           <div>
             <p className="eyebrow">Katalog</p>

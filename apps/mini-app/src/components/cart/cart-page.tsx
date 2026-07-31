@@ -1,11 +1,10 @@
 "use client";
 
-import {
-  cartResponseSchema,
-  checkoutInputSchema,
-  checkoutResponseSchema,
-  type CartItemDto,
-  type CheckoutOrderDto,
+import type {
+  CartResponse,
+  CartItemDto,
+  CheckoutOrderDto,
+  CheckoutResponse,
 } from "@kids-store/shared/cart";
 import Image from "next/image";
 import Link from "next/link";
@@ -24,7 +23,8 @@ import {
   ErrorState,
   LoadingState,
 } from "@/components/ui/status-state";
-import { requestMiniAppApi } from "@/lib/api/client";
+import { requestMiniAppApiJson } from "@/lib/api/client";
+import { validateCheckoutDraft } from "@/lib/cart/checkout-client";
 import {
   clearCartOptimistically,
   removeCartItemOptimistically,
@@ -73,6 +73,7 @@ function CartItemCard({
               fill
               loading="lazy"
               placeholder="blur"
+              quality={60}
               sizes="80px"
               src={item.productImage}
             />
@@ -198,7 +199,7 @@ export function CartPage(): ReactNode {
 
   const checkoutValidation = useMemo(
     () =>
-      checkoutInputSchema.safeParse({
+      validateCheckoutDraft({
         phone,
         deliveryAddress,
         idempotencyKey,
@@ -222,10 +223,9 @@ export function CartPage(): ReactNode {
     );
 
     try {
-      const response = await requestMiniAppApi(
+      const response = await requestMiniAppApiJson<CartResponse>(
         `/api/cart/items/${String(item.id)}`,
         readInitData,
-        cartResponseSchema,
         {
           method: "PATCH",
           body: { quantity },
@@ -252,10 +252,9 @@ export function CartPage(): ReactNode {
     replaceCart(removeCartItemOptimistically(cart, item.id));
 
     try {
-      const response = await requestMiniAppApi(
+      const response = await requestMiniAppApiJson<CartResponse>(
         `/api/cart/items/${String(item.id)}`,
         readInitData,
-        cartResponseSchema,
         { method: "DELETE" },
       );
       replaceCart(response.data);
@@ -279,10 +278,9 @@ export function CartPage(): ReactNode {
     replaceCart(clearCartOptimistically(cart));
 
     try {
-      const response = await requestMiniAppApi(
+      const response = await requestMiniAppApiJson<CartResponse>(
         "/api/cart",
         readInitData,
-        cartResponseSchema,
         { method: "DELETE" },
       );
       replaceCart(response.data);
@@ -305,10 +303,9 @@ export function CartPage(): ReactNode {
     setMessage("");
 
     try {
-      const response = await requestMiniAppApi(
+      const response = await requestMiniAppApiJson<CheckoutResponse>(
         "/api/checkout",
         readInitData,
-        checkoutResponseSchema,
         {
           method: "POST",
           body: checkoutValidation.data,

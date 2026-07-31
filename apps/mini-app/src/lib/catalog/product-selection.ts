@@ -1,21 +1,28 @@
-import {
-  productVariantDtoSchema,
-  type ProductVariantDto,
-} from "@kids-store/shared/catalog";
-import { z } from "zod";
+import type { ProductVariantDto } from "@kids-store/shared/catalog";
 
-const variantsSchema = z.array(productVariantDtoSchema);
-const selectionSchema = z.object({
-  size: z.string().trim().min(1).max(50),
-  color: z.string().trim().min(1).max(80),
-});
+interface ProductSelection {
+  color: string;
+  size: string;
+}
+
+function normalizeSelectionValue(
+  value: string,
+  maximumLength: number,
+): string {
+  const normalized = value.trim();
+
+  if (normalized.length === 0 || normalized.length > maximumLength) {
+    throw new Error("Mahsulot varianti qiymati noto‘g‘ri.");
+  }
+
+  return normalized;
+}
 
 export function getAvailableColorsForSize(
-  variantsInput: unknown,
-  sizeInput: unknown,
+  variants: readonly ProductVariantDto[],
+  sizeInput: string,
 ): string[] {
-  const variants = variantsSchema.parse(variantsInput);
-  const size = z.string().trim().min(1).max(50).parse(sizeInput);
+  const size = normalizeSelectionValue(sizeInput, 50);
 
   return Array.from(
     new Set(
@@ -27,11 +34,13 @@ export function getAvailableColorsForSize(
 }
 
 export function findSelectedProductVariant(
-  variantsInput: unknown,
-  selectionInput: unknown,
+  variants: readonly ProductVariantDto[],
+  selectionInput: ProductSelection,
 ): ProductVariantDto | null {
-  const variants = variantsSchema.parse(variantsInput);
-  const selection = selectionSchema.parse(selectionInput);
+  const selection = {
+    size: normalizeSelectionValue(selectionInput.size, 50),
+    color: normalizeSelectionValue(selectionInput.color, 80),
+  };
 
   return (
     variants.find(
@@ -43,8 +52,12 @@ export function findSelectedProductVariant(
 }
 
 export function getMaximumSelectableQuantity(
-  stockInput: unknown,
+  stockInput: number,
 ): number {
-  const stock = z.number().int().positive().parse(stockInput);
+  if (!Number.isInteger(stockInput) || stockInput <= 0) {
+    throw new Error("Mahsulot qoldig‘i noto‘g‘ri.");
+  }
+
+  const stock = stockInput;
   return Math.min(5, stock);
 }

@@ -32,4 +32,5 @@ void test("size va color aniq variantni aniqlaydi", () => {
 void test("quantity stock va 5 limitidan oshmaydi", () => {
   assert.equal(getMaximumSelectableQuantity(2), 2);
   assert.equal(getMaximumSelectableQuantity(10), 5);
+  assert.throws(() => getMaximumSelectableQuantity(0));
 });

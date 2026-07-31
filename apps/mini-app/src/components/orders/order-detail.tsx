@@ -1,10 +1,8 @@
 "use client";
 
-import {
-  orderDetailResponseSchema,
-  type OrderDetailDto,
+import type {
+  OrderDetailDto,
 } from "@kids-store/shared/cart";
-import { formatOrderStatus } from "@kids-store/shared/order-notification";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -18,9 +16,14 @@ import {
   ErrorState,
   LoadingState,
 } from "@/components/ui/status-state";
-import { fetchMiniAppApi } from "@/lib/api/client";
+import { requestMiniAppApiJson } from "@/lib/api/client";
 import { formatUzbekPrice } from "@/lib/format/price";
+import { formatMiniAppOrderStatus } from "@/lib/format/order-status";
 import { showTelegramBackButton } from "@/lib/telegram/web-app";
+
+interface OrderDetailResponse {
+  data: OrderDetailDto;
+}
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error
@@ -67,11 +70,10 @@ export function OrderDetail({
       setError("");
 
       try {
-        const response = await fetchMiniAppApi(
+        const response = await requestMiniAppApiJson<OrderDetailResponse>(
           `/api/orders/${encodeURIComponent(orderId)}`,
           readInitData,
-          orderDetailResponseSchema,
-          controller.signal,
+          { signal: controller.signal },
         );
         setOrder(response.data);
       } catch (loadError) {
@@ -142,7 +144,7 @@ export function OrderDetail({
             </h1>
           </div>
           <span className="rounded-full bg-[var(--soft-panel)] px-3 py-1 text-xs font-bold">
-            {formatOrderStatus(order.status)}
+            {formatMiniAppOrderStatus(order.status)}
           </span>
         </div>
 

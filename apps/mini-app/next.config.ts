@@ -31,6 +31,7 @@ const supabaseStoragePattern = getSupabaseStoragePattern();
 
 const nextConfig: NextConfig = {
   images: {
+    qualities: [60, 70, 75],
     remotePatterns: [
       {
         protocol: "https",

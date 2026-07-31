@@ -1,14 +1,23 @@
-import {
-  cartDtoSchema,
-  type CartDto,
-} from "@kids-store/shared/cart";
-import { z } from "zod";
+import type { CartDto } from "@kids-store/shared/cart";
 
-const cartItemIdSchema = z.number().int().positive();
-const quantitySchema = z.number().int().min(1).max(5);
+function validateCartMutation(
+  cartItemId: number,
+  quantity?: number,
+): void {
+  if (!Number.isSafeInteger(cartItemId) || cartItemId <= 0) {
+    throw new Error("Savatcha elementi ID qiymati noto‘g‘ri.");
+  }
+
+  if (
+    quantity !== undefined &&
+    (!Number.isInteger(quantity) || quantity < 1 || quantity > 5)
+  ) {
+    throw new Error("Mahsulot miqdori 1 dan 5 gacha bo‘lishi kerak.");
+  }
+}
 
 function recalculateCart(cart: CartDto): CartDto {
-  return cartDtoSchema.parse({
+  return {
     ...cart,
     totalQuantity: cart.items.reduce(
       (total, item) => total + item.quantity,
@@ -22,17 +31,15 @@ function recalculateCart(cart: CartDto): CartDto {
     unavailableItemsCount: cart.items.filter(
       (item) => !item.isAvailable,
     ).length,
-  });
+  };
 }
 
 export function updateCartQuantityOptimistically(
-  cartInput: unknown,
-  cartItemIdInput: unknown,
-  quantityInput: unknown,
+  cart: CartDto,
+  cartItemId: number,
+  quantity: number,
 ): CartDto {
-  const cart = cartDtoSchema.parse(cartInput);
-  const cartItemId = cartItemIdSchema.parse(cartItemIdInput);
-  const quantity = quantitySchema.parse(quantityInput);
+  validateCartMutation(cartItemId, quantity);
 
   return recalculateCart({
     ...cart,
@@ -51,11 +58,10 @@ export function updateCartQuantityOptimistically(
 }
 
 export function removeCartItemOptimistically(
-  cartInput: unknown,
-  cartItemIdInput: unknown,
+  cart: CartDto,
+  cartItemId: number,
 ): CartDto {
-  const cart = cartDtoSchema.parse(cartInput);
-  const cartItemId = cartItemIdSchema.parse(cartItemIdInput);
+  validateCartMutation(cartItemId);
 
   return recalculateCart({
     ...cart,
@@ -64,10 +70,8 @@ export function removeCartItemOptimistically(
 }
 
 export function clearCartOptimistically(
-  cartInput: unknown,
+  cart: CartDto,
 ): CartDto {
-  const cart = cartDtoSchema.parse(cartInput);
-
   return recalculateCart({
     ...cart,
     items: [],

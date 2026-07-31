@@ -1,9 +1,9 @@
 "use client";
 
-import { cartResponseSchema } from "@kids-store/shared/cart";
-import {
-  productDetailResponseSchema,
-  type ProductDetailDto,
+import type { CartResponse } from "@kids-store/shared/cart";
+import type {
+  ProductDetailDto,
+  ProductDetailResponse,
 } from "@kids-store/shared/catalog";
 import Image from "next/image";
 import Link from "next/link";
@@ -21,10 +21,7 @@ import {
   ErrorState,
   LoadingState,
 } from "@/components/ui/status-state";
-import {
-  fetchMiniAppApi,
-  requestMiniAppApi,
-} from "@/lib/api/client";
+import { requestMiniAppApiJson } from "@/lib/api/client";
 import { formatUzbekPrice } from "@/lib/format/price";
 import { PRODUCT_IMAGE_BLUR_DATA_URL } from "@/lib/images/placeholder";
 import {
@@ -91,11 +88,10 @@ export function ProductDetail({
       setError("");
 
       try {
-        const response = await fetchMiniAppApi(
+        const response = await requestMiniAppApiJson<ProductDetailResponse>(
           `/api/products/${encodeURIComponent(productId)}`,
           readInitData,
-          productDetailResponseSchema,
-          controller.signal,
+          { signal: controller.signal },
         );
 
         setProduct(response.data);
@@ -165,10 +161,9 @@ export function ProductDetail({
     setCartMessage("");
 
     try {
-      const response = await requestMiniAppApi(
+      const response = await requestMiniAppApiJson<CartResponse>(
         "/api/cart/items",
         readInitData,
-        cartResponseSchema,
         {
           method: "POST",
           body: {
@@ -240,18 +235,18 @@ export function ProductDetail({
     : product.price;
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-3xl px-3 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5">
+    <main className="page-shell mx-auto min-h-screen w-full max-w-3xl px-3 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5">
       <Link
-        className="surface focus-ring mb-4 inline-flex rounded-full px-4 py-2 text-sm font-extrabold"
+        className="back-link surface focus-ring mb-4 inline-flex rounded-full px-4 py-2 text-sm font-extrabold"
         href="/catalog"
         prefetch={false}
       >
         ← Katalog
       </Link>
 
-      <article>
+      <article className="product-detail-layout">
         <section aria-label="Mahsulot rasmlari">
-          <div className="image-panel relative aspect-square overflow-hidden rounded-[2rem]">
+          <div className="product-gallery image-panel relative aspect-square overflow-hidden rounded-[2rem]">
             {activeImage ? (
               <Image
                 alt={`${product.name} — ${String(activeImageIndex + 1)}-rasm`}
@@ -260,6 +255,7 @@ export function ProductDetail({
                 fill
                 placeholder="blur"
                 priority
+                quality={75}
                 sizes="(max-width: 768px) 100vw, 700px"
                 src={activeImage.url}
               />
@@ -291,6 +287,7 @@ export function ProductDetail({
                     fill
                     loading="lazy"
                     placeholder="blur"
+                    quality={60}
                     sizes="64px"
                     src={image.url}
                   />
@@ -300,7 +297,7 @@ export function ProductDetail({
           ) : null}
         </section>
 
-        <section className="surface mt-4 rounded-[2rem] px-5 py-6 sm:px-7">
+        <section className="product-info-card surface mt-4 rounded-[2rem] px-5 py-6 sm:px-7">
           <p className="text-muted text-xs font-bold">
             {product.category.name} · Kod: {product.code}
           </p>
@@ -376,7 +373,7 @@ export function ProductDetail({
           </fieldset>
 
           {selectedVariant ? (
-            <div className="mt-6 flex items-center justify-between gap-3 rounded-2xl bg-[var(--soft-panel)] p-4">
+            <div className="stock-panel mt-6 flex items-center justify-between gap-3 rounded-2xl p-4">
               <span className="text-sm font-extrabold">
                 Mavjud: {String(selectedVariant.stock)} dona
               </span>
@@ -385,29 +382,33 @@ export function ProductDetail({
                 htmlFor="product-quantity"
               >
                 Miqdor
-                <select
-                  className="focus-ring rounded-xl bg-white px-3 py-2 text-slate-900"
-                  id="product-quantity"
-                  onChange={(event) => {
-                    setQuantity(Number(event.target.value));
-                  }}
-                  value={quantity}
-                >
-                  {Array.from(
-                    { length: maximumQuantity },
-                    (_, index) => index + 1,
-                  ).map((value) => (
-                    <option key={value} value={value}>
-                      {String(value)}
-                    </option>
-                  ))}
-                </select>
+                <span className="select-shell">
+                  <select
+                    aria-label="Mahsulot miqdori"
+                    className="app-select focus-ring"
+                    id="product-quantity"
+                    onChange={(event) => {
+                      setQuantity(Number(event.target.value));
+                    }}
+                    value={quantity}
+                  >
+                    {Array.from(
+                      { length: maximumQuantity },
+                      (_, index) => index + 1,
+                    ).map((value) => (
+                      <option key={value} value={value}>
+                        {String(value)} dona
+                      </option>
+                    ))}
+                  </select>
+                  <span aria-hidden="true" className="select-chevron">⌄</span>
+                </span>
               </label>
             </div>
           ) : null}
 
           <button
-            className="focus-ring mt-7 w-full rounded-[1.15rem] bg-[var(--brand-purple)] px-5 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="primary-cta focus-ring mt-7 w-full rounded-[1.15rem] px-5 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!selectedVariant || isAdding}
             onClick={() => {
               void handleAddToCart();
@@ -429,6 +430,11 @@ export function ProductDetail({
               {cartMessage}
             </p>
           ) : null}
+          <div className="trust-strip mt-5" aria-label="Xarid afzalliklari">
+            <span>Original surat</span>
+            <span>Qulay yetkazish</span>
+            <span>Xavfsiz buyurtma</span>
+          </div>
         </section>
       </article>
     </main>
