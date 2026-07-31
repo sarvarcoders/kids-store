@@ -7,6 +7,11 @@ import { useRef, useState } from "react";
 import { useAdminAuth } from "@/components/auth/admin-auth-provider";
 import { ProductChannelPreview } from "@/components/products/product-channel-preview";
 import type { EditorProductImage } from "@/components/products/product-image-uploader";
+import {
+  nonNegativeIntegerInputSchema,
+  parseNumericInputValue,
+  type NumericInputValue,
+} from "@/lib/forms/numeric-input";
 
 const ProductImageUploader = dynamic(
   () =>
@@ -26,7 +31,7 @@ interface EditorProduct {
   slug: string;
   description: string | null;
   categoryId: number;
-  price: number;
+  price: NumericInputValue;
   discountPrice: number | null;
   isActive: boolean;
   images: EditorProductImage[];
@@ -34,7 +39,7 @@ interface EditorProduct {
     id?: number;
     size: string;
     color: string;
-    stock: number;
+    stock: NumericInputValue;
   }[];
 }
 
@@ -83,11 +88,11 @@ export function ProductEditor({
       slug: "",
       description: null,
       categoryId: categories[0]?.id ?? 0,
-      price: 0,
+      price: "",
       discountPrice: null,
       isActive: true,
       images: [],
-      variants: [{ size: "", color: "", stock: 0 }],
+      variants: [{ size: "", color: "", stock: "" }],
     },
   );
   const [draftId] = useState(() => crypto.randomUUID());
@@ -146,10 +151,27 @@ export function ProductEditor({
       return;
     }
 
+    const parsedPrice = nonNegativeIntegerInputSchema.safeParse(product.price);
+    const parsedStocks = product.variants.map((variant) =>
+      nonNegativeIntegerInputSchema.safeParse(variant.stock),
+    );
+
+    if (!parsedPrice.success || parsedStocks.some((result) => !result.success)) {
+      setError("Narx va barcha stock qiymatlarini butun son bilan kiriting.");
+      return;
+    }
+
+    const normalizedVariants = product.variants.map((variant, index) => ({
+      ...variant,
+      stock: nonNegativeIntegerInputSchema.parse(
+        parsedStocks[index]?.success ? parsedStocks[index].data : variant.stock,
+      ),
+    }));
+
     if (
       shouldPublish &&
       (!product.isActive ||
-        !product.variants.some((variant) => variant.stock > 0))
+        !normalizedVariants.some((variant) => variant.stock > 0))
     ) {
       setError(
         "Kanalga chiqarish uchun mahsulot faol va kamida bitta variant stock’i musbat bo‘lishi kerak.",
@@ -173,11 +195,13 @@ export function ProductEditor({
           idempotent: true,
           body: {
             ...product,
+            price: parsedPrice.data,
             images: product.images.map((image, index) => ({
               ...(image.id === undefined ? {} : { id: image.id }),
               url: image.url,
               sortOrder: index,
             })),
+            variants: normalizedVariants,
           },
         },
       );
@@ -374,14 +398,16 @@ export function ProductEditor({
           <label>
             Asosiy narx
             <input
+              inputMode="numeric"
               min={0}
               onChange={(event) =>
                 { setProduct({
                   ...product,
-                  price: Number(event.target.value),
+                  price: parseNumericInputValue(event.target.value),
                 }); }
               }
               required
+              step={1}
               type="number"
               value={product.price}
             />
@@ -389,16 +415,16 @@ export function ProductEditor({
           <label>
             Chegirmali narx
             <input
+              inputMode="numeric"
               min={0}
-              onChange={(event) =>
-                { setProduct({
+              onChange={(event) => {
+                const value = parseNumericInputValue(event.target.value);
+                setProduct({
                   ...product,
-                  discountPrice:
-                    event.target.value === ""
-                      ? null
-                      : Number(event.target.value),
-                }); }
-              }
+                  discountPrice: value === "" ? null : value,
+                });
+              }}
+              step={1}
               type="number"
               value={product.discountPrice ?? ""}
             />
@@ -472,7 +498,7 @@ export function ProductEditor({
                 ...product,
                 variants: [
                   ...product.variants,
-                  { size: "", color: "", stock: 0 },
+                  { size: "", color: "", stock: "" },
                 ],
               }); }
             }
@@ -509,6 +535,7 @@ export function ProductEditor({
               <label>
                 Stock
                 <input
+                  inputMode="numeric"
                   min={0}
                   onChange={(event) => {
                     const variants = [...product.variants];
@@ -517,12 +544,13 @@ export function ProductEditor({
                     if (current) {
                       variants[index] = {
                         ...current,
-                        stock: Number(event.target.value),
+                        stock: parseNumericInputValue(event.target.value),
                       };
                       setProduct({ ...product, variants });
                     }
                   }}
                   required
+                  step={1}
                   type="number"
                   value={variant.stock}
                 />
@@ -551,7 +579,7 @@ export function ProductEditor({
         description={product.description}
         discountPrice={product.discountPrice}
         name={product.name}
-        price={product.price}
+        price={product.price === "" ? null : product.price}
         variants={product.variants}
       />
       <div className="form-actions">

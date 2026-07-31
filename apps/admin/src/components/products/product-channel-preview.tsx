@@ -27,7 +27,7 @@ export function ProductChannelPreview({
   description: string | null;
   discountPrice: number | null;
   name: string;
-  price: number;
+  price: number | null;
   variants: PreviewVariant[];
 }): React.ReactNode {
   return (
@@ -46,7 +46,9 @@ export function ProductChannelPreview({
             ? description
             : "Mahsulot tavsifi"}
         </p>
-        {discountPrice !== null ? (
+        {price === null ? (
+          <b>Narx kiritilmagan</b>
+        ) : discountPrice !== null ? (
           <>
             <s>{formatPrice(price)}</s>
             <b>{formatPrice(discountPrice)}</b>
