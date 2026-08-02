@@ -126,9 +126,7 @@ export function ProductEditor({
     () => initialProduct?.images.map((image) => image.url) ?? [],
   );
   const [removedImageUrls, setRemovedImageUrls] = useState<string[]>([]);
-  const [slugEdited, setSlugEdited] = useState(
-    initialProduct !== undefined,
-  );
+  const shouldPreserveSlug = initialProduct !== undefined;
   const [busy, setBusy] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -354,9 +352,20 @@ export function ProductEditor({
             Kod
             <input
               maxLength={64}
-              onChange={(event) =>
-                { setProduct({ ...product, code: event.target.value }); }
-              }
+              onChange={(event) => {
+                const code = event.target.value;
+                setProduct((current) => ({
+                  ...current,
+                  code,
+                  ...(shouldPreserveSlug
+                    ? {}
+                    : {
+                        slug: slugifyProductName(
+                          `${current.name}-${code}`,
+                        ),
+                      }),
+                }));
+              }}
               required
               value={product.code}
             />
@@ -370,9 +379,13 @@ export function ProductEditor({
                 setProduct((current) => ({
                   ...current,
                   name,
-                  ...(slugEdited
+                  ...(shouldPreserveSlug
                     ? {}
-                    : { slug: slugifyProductName(name) }),
+                    : {
+                        slug: slugifyProductName(
+                          `${name}-${current.code}`,
+                        ),
+                      }),
                 }));
               }}
               required
@@ -380,15 +393,11 @@ export function ProductEditor({
             />
           </label>
           <label>
-            Slug
+            Katalog manzili (avtomatik)
             <input
               maxLength={200}
-              onChange={(event) => {
-                setSlugEdited(true);
-                setProduct({ ...product, slug: event.target.value });
-              }}
-              pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-              required
+              placeholder="Nomi va koddan avtomatik yaratiladi"
+              readOnly
               value={product.slug}
             />
           </label>
@@ -504,7 +513,7 @@ export function ProductEditor({
         <div className="panel-heading">
           <div>
             <span>Kamida bitta variant</span>
-            <h2>O‘lcham, rang va stock</h2>
+            <h2>O‘lcham, rang va ombordagi soni</h2>
           </div>
           <button
             className="secondary-button"
@@ -522,14 +531,24 @@ export function ProductEditor({
             + Variant
           </button>
         </div>
+        <p className="hint">
+          Ombordagi soni shu variantdan nechta borligini bildiradi. 0
+          bo‘lsa variant sotuvda ko‘rinmaydi. Sumka kabi o‘lchamsiz
+          mahsulotlarda “Standart” deb yozing.
+        </p>
         <div className="repeat-list">
           {product.variants.map((variant, index) => (
             <div className="repeat-row" key={variant.id ?? index}>
               {(["size", "color"] as const).map((field) => (
                 <label key={field}>
-                  {field === "size" ? "O‘lcham" : "Rang"}
+                  {field === "size" ? "O‘lcham / turi" : "Rang"}
                   <input
                     maxLength={field === "size" ? 50 : 80}
+                    placeholder={
+                      field === "size"
+                        ? "Masalan: 28 yoki Standart"
+                        : "Masalan: Qora"
+                    }
                     onChange={(event) => {
                       const variants = [...product.variants];
                       const current = variants[index];
@@ -548,7 +567,7 @@ export function ProductEditor({
                 </label>
               ))}
               <label>
-                Stock
+                Ombordagi soni
                 <input
                   inputMode="numeric"
                   min={0}
@@ -565,6 +584,7 @@ export function ProductEditor({
                     }
                   }}
                   required
+                  placeholder="Masalan: 5"
                   step={1}
                   type="number"
                   value={variant.stock}

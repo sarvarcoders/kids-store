@@ -25,6 +25,7 @@ import { AdminStatisticsService } from "./services/admin-statistics.service.js";
 import { OrderService } from "./services/order.service.js";
 import { startBotNotificationWorker } from "./services/notification-worker.js";
 import { createBotSessionStorage } from "./services/session-storage.js";
+import { configureBotCommandMenu } from "./services/bot-command-menu.js";
 import {
   createInitialSession,
   type BotContext,
@@ -127,6 +128,16 @@ registerShutdownSignal("SIGTERM");
 
 try {
   await bot.init();
+  try {
+    await configureBotCommandMenu(
+      (commands, options) =>
+        bot.api.setMyCommands([...commands], options),
+      env.ADMIN_TELEGRAM_IDS,
+    );
+  } catch (error) {
+    logger.error("Telegram command menyusini o‘rnatib bo‘lmadi", error);
+  }
+
   if (isShutdownRequested()) {
     logger.info("Bot ishga tushishi shutdown signali sabab bekor qilindi");
   } else {

@@ -1,6 +1,7 @@
 import {
   PRODUCT_IMAGE_ALLOWED_MIME_TYPES,
   PRODUCT_IMAGE_MAX_SOURCE_BYTES,
+  PRODUCT_IMAGE_MAX_SOURCE_MEGABYTES,
   PRODUCT_IMAGE_MAX_UPLOAD_BYTES,
 } from "./product-image-policy";
 
@@ -27,7 +28,7 @@ export function validateSelectedProductImage(
   }
 
   if (file.size > PRODUCT_IMAGE_MAX_SOURCE_BYTES) {
-    return "Asl rasm hajmi 12 MB dan oshmasligi kerak.";
+    return `Asl rasm hajmi ${String(PRODUCT_IMAGE_MAX_SOURCE_MEGABYTES)} MB dan oshmasligi kerak.`;
   }
 
   return null;

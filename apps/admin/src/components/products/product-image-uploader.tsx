@@ -10,6 +10,7 @@ import {
 } from "@/lib/storage/image-processing";
 import {
   PRODUCT_IMAGE_MAX_COUNT,
+  PRODUCT_IMAGE_MAX_SOURCE_MEGABYTES,
   productImageUploadResultSchema,
 } from "@/lib/storage/product-image-policy";
 
@@ -251,7 +252,7 @@ export function ProductImageUploader({
     <div className="image-uploader">
       <div className="image-upload-actions">
         <input
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           className="visually-hidden"
           disabled={
             disabled ||
@@ -276,7 +277,7 @@ export function ProductImageUploader({
           📷 Galereyadan tanlash
         </button>
         <input
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           capture="environment"
           className="visually-hidden"
           disabled={
@@ -304,8 +305,9 @@ export function ProductImageUploader({
 
       <p className="hint">
         {String(images.length)}/{String(PRODUCT_IMAGE_MAX_COUNT)} rasm · JPEG,
-        PNG yoki WebP · har biri 12 MB gacha. Rasmlar avtomatik
-        kichraytiriladi.
+        PNG yoki WebP · asl fayl har biri{" "}
+        {String(PRODUCT_IMAGE_MAX_SOURCE_MEGABYTES)} MB gacha. Serverga
+        yuborilishdan oldin 3 MB gacha avtomatik kichraytiriladi.
       </p>
 
       {error ? (

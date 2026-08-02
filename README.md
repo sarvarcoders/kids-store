@@ -74,6 +74,11 @@ Allowlistdagi foydalanuvchi `/admin` komandasini yuborganda bot
 `⚙️ Admin panel` Web App tugmasini ko‘rsatadi. Botning mavjud
 `🛍 Do‘kon` default menu tugmasi o‘zgarmaydi.
 
+Bot ishga tushganda Telegram `/` command menyusini avtomatik ro‘yxatdan
+o‘tkazadi. Barcha foydalanuvchilarga `/start`, `/help`, `/admin`,
+allowlistdagi admin chatlariga esa qo‘shimcha `/stats`, `/orders` va
+`/publish` komandasi ko‘rinadi.
+
 `REDIS_URL` sozlanganda tugallanmagan bot checkout sessioni 24 soat saqlanadi
 va process restartidan keyin tiklanadi. Redis sozlanmagan lokal developmentda
 session memory fallback’da qoladi va restartda yo‘qoladi. Database’ga yozilgan
@@ -228,9 +233,10 @@ oching. Keyingi browser auth SSO yoki passkey bilan alohida xavfsizlik auditi
 asosida rejalashtiriladi.
 
 Mahsulot yaratishda admin telefondan 1–8 ta JPEG, PNG yoki WebP rasm tanlaydi.
-Brauzer rasmni eng katta tomoni 1600px bo‘lguncha kichraytirib WebP yoki
-optimallashtirilgan JPEG qiladi; server 3 MB limit, MIME va magic bytes’ni
-qayta tekshiradi. Fayl server-only service-role orqali public
+Asl fayl 50 MB gacha bo‘lishi mumkin. Brauzer rasmni eng katta tomoni 1600px
+bo‘lguncha kichraytirib WebP yoki optimallashtirilgan JPEG qiladi; serverga
+faqat 3 MB gacha optimallashtirilgan fayl yuboriladi va server MIME hamda
+magic bytes’ni qayta tekshiradi. Fayl server-only service-role orqali public
 `product-images` bucket’iga
 `products/<product-id-yoki-temp>/<timestamp>-<random>.<format>` yo‘lida
 yuklanadi. Database faqat stable public HTTPS URL va `sortOrder`ni saqlaydi.
@@ -243,6 +249,16 @@ yopilib qolgan holat uchun `products/temp/` obyektlarini vaqti-vaqti bilan
 Storage lifecycle yoki alohida maintenance job orqali tozalash tavsiya etiladi.
 Oldingi `placehold.co` va `images.unsplash.com` URL’lari backward compatibility
 uchun saqlanadi; yangi asosiy flow gallery/camera upload hisoblanadi.
+
+Mahsulot va kategoriya `slug` qiymati Admin UI hamda server validatsiyasida
+avtomatik yaratiladi. Slug katalogdagi barqaror URL/filter identifikatori;
+admin uni qo‘lda yozmaydi. Mavjud mahsulot tahrirlanganda eski slug saqlanadi,
+shuning uchun oldingi katalog havolalari buzilmaydi.
+
+Variantdagi “Ombordagi soni” (`stock`) aynan shu o‘lcham/rangdan nechta
+mavjudligini bildiradi. Qiymat `0` bo‘lsa variant katalogda sotuvda
+ko‘rinmaydi va kanalga chiqarilmaydi. O‘lchamsiz sumka yoki aksessuarda
+o‘lcham/tur qiymati sifatida `Standart` ishlatiladi.
 
 ### Vercel monorepo deploy
 

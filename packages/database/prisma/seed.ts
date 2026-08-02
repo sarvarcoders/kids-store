@@ -9,10 +9,14 @@ const httpsUrlSchema = z
   });
 
 const seedDataSchema = z.object({
-  category: z.object({
-    name: z.string().trim().min(1).max(120),
-    slug: z.string().trim().min(1).max(160),
-  }),
+  categories: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(120),
+        slug: z.string().trim().min(1).max(160),
+      }),
+    )
+    .min(1),
   product: z.object({
     code: z.string().trim().min(1).max(64),
     name: z.string().trim().min(1).max(160),
@@ -50,10 +54,24 @@ const seedDataSchema = z.object({
 });
 
 const seedData = seedDataSchema.parse({
-  category: {
-    name: "O‘g‘il bolalar kiyimi",
-    slug: "boys-clothing",
-  },
+  categories: [
+    {
+      name: "O‘g‘il bolalar kiyimi",
+      slug: "boys-clothing",
+    },
+    {
+      name: "Qiz bolalar kiyimi",
+      slug: "girls-clothing",
+    },
+    {
+      name: "Bolalar oyoq kiyimi",
+      slug: "kids-footwear",
+    },
+    {
+      name: "Sumka va aksessuarlar",
+      slug: "bags-accessories",
+    },
+  ],
   product: {
     code: "KS-0001",
     name: "Bolalar uchun sport kostyumi",
@@ -85,15 +103,29 @@ interface SeedSummary {
 
 async function seedDatabase(): Promise<SeedSummary> {
   return prisma.$transaction(async (transaction) => {
-    const category = await transaction.category.upsert({
-      where: {
-        slug: seedData.category.slug,
-      },
-      update: {
-        name: seedData.category.name,
-      },
-      create: seedData.category,
-    });
+    const categories: { id: number; slug: string }[] = [];
+
+    for (const categoryInput of seedData.categories) {
+      categories.push(
+        await transaction.category.upsert({
+          where: {
+            slug: categoryInput.slug,
+          },
+          update: {
+            name: categoryInput.name,
+          },
+          create: categoryInput,
+        }),
+      );
+    }
+
+    const category = categories.find(
+      (item) => item.slug === "boys-clothing",
+    );
+
+    if (!category) {
+      throw new Error("Seed product kategoriyasi topilmadi.");
+    }
 
     const product = await transaction.product.upsert({
       where: {

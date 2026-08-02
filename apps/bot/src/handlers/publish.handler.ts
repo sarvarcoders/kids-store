@@ -10,6 +10,7 @@ import {
   logRedisFallback,
 } from "../config/redis.js";
 import { databaseIdSchema } from "../config/validation.js";
+import { isAdminTelegramUser } from "../config/admin-launcher.js";
 import {
   ChannelPostServiceError,
   type ChannelPostService,
@@ -31,7 +32,7 @@ const publishRateLimiter = new ResilientRateLimiter({
 });
 
 function isAdmin(ctx: BotContext): boolean {
-  return ctx.from !== undefined && BigInt(ctx.from.id) === env.ADMIN_TELEGRAM_ID;
+  return isAdminTelegramUser(ctx.from?.id, env.ADMIN_TELEGRAM_IDS);
 }
 
 function getPublishErrorMessage(error: unknown): string {

@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { BotContext } from "../types/bot-context.js";
 import { databaseIdSchema } from "../config/validation.js";
 import { createMainMenuKeyboard } from "../keyboards/main-menu.keyboard.js";
-import { showMainMenu } from "./menu.handler.js";
+import { showHelp, showMainMenu } from "./menu.handler.js";
 import { showProduct } from "./product.handler.js";
 
 const productStartPayloadSchema = z
@@ -13,6 +13,7 @@ const productStartPayloadSchema = z
   .transform((payload) => databaseIdSchema.parse(payload.slice("product_".length)));
 
 export function registerStartHandler(bot: Bot<BotContext>): void {
+  bot.command("help", showHelp);
   bot.command("start", async (ctx) => {
     const payload = typeof ctx.match === "string" ? ctx.match.trim() : "";
 

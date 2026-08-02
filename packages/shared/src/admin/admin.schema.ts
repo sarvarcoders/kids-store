@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import {
+  createCategorySlug,
+  createProductSlug,
+} from "./catalog-slug.js";
+
 const POSTGRES_INTEGER_MAX = 2_147_483_647;
 const databaseIdSchema = z.coerce
   .number()
@@ -17,6 +22,20 @@ const optionalTrimmedString = (maximum: number) =>
 const booleanQuerySchema = z
   .enum(["true", "false"])
   .transform((value) => value === "true");
+const optionalSlugSchema = (maximum: number) =>
+  z.preprocess(
+    (value) =>
+      typeof value === "string" && value.trim().length === 0
+        ? undefined
+        : value,
+    z
+      .string()
+      .trim()
+      .min(1)
+      .max(maximum)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+      .optional(),
+  );
 
 export const adminTelegramIdsSchema = z
   .string()
@@ -59,16 +78,11 @@ export const adminProductVariantInputSchema = z.object({
     .max(POSTGRES_INTEGER_MAX),
 });
 
-export const adminProductInputSchema = z
+const adminProductBaseInputSchema = z
   .object({
     code: z.string().trim().min(1).max(64),
     name: z.string().trim().min(1).max(160),
-    slug: z
-      .string()
-      .trim()
-      .min(1)
-      .max(200)
-      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    slug: optionalSlugSchema(200),
     description: optionalTrimmedString(5_000),
     categoryId: databaseIdSchema,
     price: z.coerce
@@ -128,15 +142,44 @@ export const adminProductInputSchema = z
     });
   });
 
-export const adminCategoryInputSchema = z.object({
-  name: z.string().trim().min(1).max(120),
-  slug: z
-    .string()
-    .trim()
-    .min(1)
-    .max(160)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-});
+export const adminProductInputSchema = adminProductBaseInputSchema
+  .transform((value, context) => {
+    const slug = value.slug ??
+      createProductSlug({ code: value.code, name: value.name });
+
+    if (slug.length === 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["slug"],
+        message: "Mahsulot katalog manzilini yaratib bo‘lmadi",
+      });
+
+      return z.NEVER;
+    }
+
+    return { ...value, slug };
+  });
+
+export const adminCategoryInputSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    slug: optionalSlugSchema(160),
+  })
+  .transform((value, context) => {
+    const slug = value.slug ?? createCategorySlug(value.name);
+
+    if (slug.length === 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["slug"],
+        message: "Kategoriya katalog manzilini yaratib bo‘lmadi",
+      });
+
+      return z.NEVER;
+    }
+
+    return { ...value, slug };
+  });
 
 export const adminPaginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

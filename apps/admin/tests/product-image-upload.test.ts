@@ -51,7 +51,7 @@ void test("gallery fayl turi va hajmini clientda tekshiradi", () => {
       type: "image/webp",
       size: PRODUCT_IMAGE_MAX_SOURCE_BYTES + 1,
     }) ?? "",
-    /12 MB/,
+    /50 MB/,
   );
 });
 

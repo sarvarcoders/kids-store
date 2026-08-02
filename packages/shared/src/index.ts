@@ -97,6 +97,11 @@ export {
 } from "./validators/order.validator.js";
 export { phoneSchema, type Phone } from "./validators/phone.validator.js";
 export {
+  createCatalogSlug,
+  createCategorySlug,
+  createProductSlug,
+} from "./admin/catalog-slug.js";
+export {
   adminAuditQuerySchema,
   adminCategoryInputSchema,
   adminChannelPostQuerySchema,

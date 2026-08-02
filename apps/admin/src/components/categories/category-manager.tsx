@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { createCategorySlug } from "@kids-store/shared";
 
 import { useAdminAuth } from "@/components/auth/admin-auth-provider";
 
@@ -139,21 +140,31 @@ export function CategoryManager({
           Nomi
           <input
             maxLength={120}
-            onChange={(event) => { setName(event.target.value); }}
+            onChange={(event) => {
+              const nextName = event.target.value;
+              setName(nextName);
+
+              if (editingId === null) {
+                setSlug(createCategorySlug(nextName));
+              }
+            }}
             required
             value={name}
           />
         </label>
         <label>
-          Slug
+          Katalog manzili (avtomatik)
           <input
             maxLength={160}
-            onChange={(event) => { setSlug(event.target.value); }}
-            pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-            required
+            placeholder="Kategoriya nomidan avtomatik yaratiladi"
+            readOnly
             value={slug}
           />
         </label>
+        <p className="hint">
+          Bu texnik manzil katalog filtrlari uchun ishlatiladi. Uni
+          qo‘lda yozish shart emas.
+        </p>
         <div className="form-actions">
           {editingId !== null ? (
             <button

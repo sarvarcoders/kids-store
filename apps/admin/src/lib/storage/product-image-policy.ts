@@ -2,7 +2,9 @@ import { z } from "zod";
 
 export const PRODUCT_IMAGE_BUCKET_DEFAULT = "product-images";
 export const PRODUCT_IMAGE_MAX_COUNT = 8;
-export const PRODUCT_IMAGE_MAX_SOURCE_BYTES = 12 * 1024 * 1024;
+export const PRODUCT_IMAGE_MAX_SOURCE_MEGABYTES = 50;
+export const PRODUCT_IMAGE_MAX_SOURCE_BYTES =
+  PRODUCT_IMAGE_MAX_SOURCE_MEGABYTES * 1024 * 1024;
 export const PRODUCT_IMAGE_MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
 export const PRODUCT_IMAGE_ALLOWED_MIME_TYPES = [
   "image/jpeg",

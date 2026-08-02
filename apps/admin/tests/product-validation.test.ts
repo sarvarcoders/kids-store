@@ -94,6 +94,15 @@ void test("archive bir xil requestda idempotent", () => {
   });
 });
 
+void test("product slug nom va koddan avtomatik yaratiladi", () => {
+  const product = adminProductInputSchema.parse({
+    ...validProduct,
+    slug: undefined,
+  });
+
+  assert.equal(product.slug, "bolalar-kostyumi-ks-0100");
+});
+
 void test("yangi product raqam inputi bo‘sh holatda qolishi mumkin", () => {
   assert.equal(formatOptionalProductIntegerInput(null), "");
   assert.equal(getProductIntegerPreview(""), 0);
