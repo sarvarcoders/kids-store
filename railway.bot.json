@@ -5,6 +5,7 @@
     "buildCommand": "pnpm --filter @kids-store/bot build"
   },
   "deploy": {
+    "region": "asia-southeast1-eqsg3a",
     "startCommand": "pnpm --filter @kids-store/bot start",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10

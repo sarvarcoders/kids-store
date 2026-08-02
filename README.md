@@ -260,6 +260,15 @@ Admin mutation rate-limit va idempotency Redis sozlanganda barcha serverless
 instance’lar orasida umumiy ishlaydi. Database transaction, unique constraint
 va conditional order status update data integrity’ni saqlaydi.
 
+### Production regionlari va tezlik
+
+Supabase PostgreSQL `ap-south-1` regionida bo'lganligi uchun Mini App va Admin
+Vercel server funksiyalari `bom1` (Mumbai) regionida ishlaydi. Railway bot
+`asia-southeast1-eqsg3a` (Singapore) regionida ishga tushadi. Bu sozlamalar
+server bilan database o'rtasidagi tarmoq kechikishini kamaytiradi. Production
+database regioni o'zgarsa `vercel.json` va `railway.bot.json` ham qayta
+baholanishi kerak.
+
 ## Tekshiruv va build
 
 ```bash

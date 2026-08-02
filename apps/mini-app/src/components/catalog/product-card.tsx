@@ -7,8 +7,10 @@ import { formatUzbekPrice } from "@/lib/format/price";
 import { PRODUCT_IMAGE_BLUR_DATA_URL } from "@/lib/images/placeholder";
 
 export function ProductCard({
+  preloadImage = false,
   product,
 }: {
+  preloadImage?: boolean;
   product: CatalogProductDto;
 }): ReactNode {
   const hasDiscount =
@@ -38,8 +40,8 @@ export function ProductCard({
               blurDataURL={PRODUCT_IMAGE_BLUR_DATA_URL}
               className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
               fill
-              loading="lazy"
               placeholder="blur"
+              preload={preloadImage}
               sizes="(max-width: 768px) 50vw, 33vw"
               src={product.imageUrl}
             />

@@ -224,6 +224,11 @@ button {
   }
 }
 
+.catalog-deferred-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

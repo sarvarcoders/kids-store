@@ -3,10 +3,16 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { adminProductInputSchema } from "@kids-store/shared";
 
 import { useAdminAuth } from "@/components/auth/admin-auth-provider";
 import { ProductChannelPreview } from "@/components/products/product-channel-preview";
 import type { EditorProductImage } from "@/components/products/product-image-uploader";
+import {
+  formatOptionalProductIntegerInput,
+  formatProductIntegerInput,
+  getProductIntegerPreview,
+} from "@/lib/products/product-number-input";
 
 const ProductImageUploader = dynamic(
   () =>
@@ -35,6 +41,18 @@ interface EditorProduct {
     size: string;
     color: string;
     stock: number;
+  }[];
+}
+
+interface EditorProductDraft
+  extends Omit<EditorProduct, "discountPrice" | "price" | "variants"> {
+  discountPrice: string;
+  price: string;
+  variants: {
+    id?: number;
+    size: string;
+    color: string;
+    stock: string;
   }[];
 }
 
@@ -76,19 +94,31 @@ export function ProductEditor({
   const { request } = useAdminAuth();
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
-  const [product, setProduct] = useState<EditorProduct>(
-    initialProduct ?? {
-      code: "",
-      name: "",
-      slug: "",
-      description: null,
-      categoryId: categories[0]?.id ?? 0,
-      price: 0,
-      discountPrice: null,
-      isActive: true,
-      images: [],
-      variants: [{ size: "", color: "", stock: 0 }],
-    },
+  const [product, setProduct] = useState<EditorProductDraft>(
+    initialProduct
+      ? {
+          ...initialProduct,
+          price: formatProductIntegerInput(initialProduct.price),
+          discountPrice: formatOptionalProductIntegerInput(
+            initialProduct.discountPrice,
+          ),
+          variants: initialProduct.variants.map((variant) => ({
+            ...variant,
+            stock: formatProductIntegerInput(variant.stock),
+          })),
+        }
+      : {
+          code: "",
+          name: "",
+          slug: "",
+          description: null,
+          categoryId: categories[0]?.id ?? 0,
+          price: "",
+          discountPrice: "",
+          isActive: true,
+          images: [],
+          variants: [{ size: "", color: "", stock: "" }],
+        },
   );
   const [draftId] = useState(() => crypto.randomUUID());
   const [productId, setProductId] = useState(initialProduct?.id);
@@ -146,10 +176,27 @@ export function ProductEditor({
       return;
     }
 
+    const parsedProduct = adminProductInputSchema.safeParse({
+      ...product,
+      images: product.images.map((image, index) => ({
+        ...(image.id === undefined ? {} : { id: image.id }),
+        url: image.url,
+        sortOrder: index,
+      })),
+    });
+
+    if (!parsedProduct.success) {
+      setError(
+        parsedProduct.error.issues[0]?.message ??
+          "Mahsulot ma’lumotlarini tekshirib qayta urinib ko‘ring.",
+      );
+      return;
+    }
+
     if (
       shouldPublish &&
-      (!product.isActive ||
-        !product.variants.some((variant) => variant.stock > 0))
+      (!parsedProduct.data.isActive ||
+        !parsedProduct.data.variants.some((variant) => variant.stock > 0))
     ) {
       setError(
         "Kanalga chiqarish uchun mahsulot faol va kamida bitta variant stock’i musbat bo‘lishi kerak.",
@@ -171,14 +218,7 @@ export function ProductEditor({
         {
           method: productId ? "PATCH" : "POST",
           idempotent: true,
-          body: {
-            ...product,
-            images: product.images.map((image, index) => ({
-              ...(image.id === undefined ? {} : { id: image.id }),
-              url: image.url,
-              sortOrder: index,
-            })),
-          },
+          body: parsedProduct.data,
         },
       );
       const savedId = result.data.id;
@@ -374,14 +414,16 @@ export function ProductEditor({
           <label>
             Asosiy narx
             <input
+              inputMode="numeric"
               min={0}
               onChange={(event) =>
                 { setProduct({
                   ...product,
-                  price: Number(event.target.value),
+                  price: event.target.value,
                 }); }
               }
               required
+              step={1}
               type="number"
               value={product.price}
             />
@@ -389,18 +431,17 @@ export function ProductEditor({
           <label>
             Chegirmali narx
             <input
+              inputMode="numeric"
               min={0}
               onChange={(event) =>
                 { setProduct({
                   ...product,
-                  discountPrice:
-                    event.target.value === ""
-                      ? null
-                      : Number(event.target.value),
+                  discountPrice: event.target.value,
                 }); }
               }
+              step={1}
               type="number"
-              value={product.discountPrice ?? ""}
+              value={product.discountPrice}
             />
           </label>
           <label className="wide-field">
@@ -472,7 +513,7 @@ export function ProductEditor({
                 ...product,
                 variants: [
                   ...product.variants,
-                  { size: "", color: "", stock: 0 },
+                  { size: "", color: "", stock: "" },
                 ],
               }); }
             }
@@ -509,6 +550,7 @@ export function ProductEditor({
               <label>
                 Stock
                 <input
+                  inputMode="numeric"
                   min={0}
                   onChange={(event) => {
                     const variants = [...product.variants];
@@ -517,12 +559,13 @@ export function ProductEditor({
                     if (current) {
                       variants[index] = {
                         ...current,
-                        stock: Number(event.target.value),
+                        stock: event.target.value,
                       };
                       setProduct({ ...product, variants });
                     }
                   }}
                   required
+                  step={1}
                   type="number"
                   value={variant.stock}
                 />
@@ -549,10 +592,17 @@ export function ProductEditor({
       <ProductChannelPreview
         code={product.code}
         description={product.description}
-        discountPrice={product.discountPrice}
+        discountPrice={
+          product.discountPrice.length === 0
+            ? null
+            : getProductIntegerPreview(product.discountPrice)
+        }
         name={product.name}
-        price={product.price}
-        variants={product.variants}
+        price={getProductIntegerPreview(product.price)}
+        variants={product.variants.map((variant) => ({
+          ...variant,
+          stock: getProductIntegerPreview(variant.stock),
+        }))}
       />
       <div className="form-actions">
         {productId !== undefined ? (

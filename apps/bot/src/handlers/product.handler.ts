@@ -2,6 +2,7 @@ import type { BotContext } from "../types/bot-context.js";
 import { createMainMenuKeyboard } from "../keyboards/main-menu.keyboard.js";
 import { createSizeKeyboard } from "../keyboards/product-options.keyboard.js";
 import { logger } from "../config/logger.js";
+import { botProductPhotoCache } from "../services/bot-product-photo-cache.js";
 import { findActiveProductById } from "../services/product.service.js";
 import { formatProductCaption } from "../services/product-presentation.service.js";
 
@@ -40,15 +41,49 @@ export async function showProduct(
       return;
     }
 
+    const cachedFileId = await botProductPhotoCache.get(primaryImage.url);
+
     try {
-      await ctx.replyWithPhoto(primaryImage.url, {
-        caption,
-        reply_markup: keyboard,
-      });
+      const sentMessage = await ctx.replyWithPhoto(
+        cachedFileId ?? primaryImage.url,
+        {
+          caption,
+          reply_markup: keyboard,
+        },
+      );
+      const reusableFileId = sentMessage.photo.at(-1)?.file_id;
+
+      if (!cachedFileId && reusableFileId) {
+        void botProductPhotoCache.set(primaryImage.url, reusableFileId);
+      }
     } catch (error) {
+      if (cachedFileId) {
+        await botProductPhotoCache.delete(primaryImage.url);
+
+        try {
+          const sentMessage = await ctx.replyWithPhoto(primaryImage.url, {
+            caption,
+            reply_markup: keyboard,
+          });
+          const reusableFileId = sentMessage.photo.at(-1)?.file_id;
+
+          if (reusableFileId) {
+            void botProductPhotoCache.set(primaryImage.url, reusableFileId);
+          }
+          return;
+        } catch (freshImageError) {
+          logger.warn("Telegram mahsulot rasmini URL orqali ham yubora olmadi", {
+            productId: product.id,
+            error:
+              freshImageError instanceof Error
+                ? freshImageError.message
+                : freshImageError,
+          });
+        }
+      }
+
       logger.warn("Telegram mahsulot rasmini yubora olmadi", {
         productId: product.id,
-        imageUrl: primaryImage.url,
         error: error instanceof Error ? error.message : error,
       });
       await ctx.reply(`🖼 Mahsulot rasmini yuklab bo‘lmadi.\n\n${caption}`, {

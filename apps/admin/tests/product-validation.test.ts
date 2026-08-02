@@ -8,6 +8,11 @@ import {
   getRemovedVariantStrategy,
   isPrismaUniqueConstraintError,
 } from "../src/lib/products/product-domain.js";
+import {
+  formatOptionalProductIntegerInput,
+  formatProductIntegerInput,
+  getProductIntegerPreview,
+} from "../src/lib/products/product-number-input.js";
 
 const validProduct = {
   code: "KS-0100",
@@ -87,4 +92,22 @@ void test("archive bir xil requestda idempotent", () => {
     action: null,
     changed: false,
   });
+});
+
+void test("yangi product raqam inputi bo‘sh holatda qolishi mumkin", () => {
+  assert.equal(formatOptionalProductIntegerInput(null), "");
+  assert.equal(getProductIntegerPreview(""), 0);
+});
+
+void test("saqlangan narx va stock input matniga xavfsiz o‘tkaziladi", () => {
+  assert.equal(formatProductIntegerInput(249_000), "249000");
+  assert.equal(formatProductIntegerInput(0), "0");
+  assert.equal(getProductIntegerPreview("5"), 5);
+});
+
+void test("manfiy, kasr va PostgreSQL integer limitidan katta qiymat rad etiladi", () => {
+  assert.throws(() => formatProductIntegerInput(-1));
+  assert.throws(() => formatProductIntegerInput(1.5));
+  assert.throws(() => formatProductIntegerInput(2_147_483_648));
+  assert.equal(getProductIntegerPreview("-1"), 0);
 });

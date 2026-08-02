@@ -3,7 +3,7 @@ import { RedisSessionStorage } from "@kids-store/core";
 import { botRedisConfig, getBotRedisProducer, logRedisFallback } from "../config/redis.js";
 import { botSessionSchema, type BotSession } from "../types/bot-context.js";
 
-interface SessionStorage<TSession> {
+export interface SessionStorage<TSession> {
   delete(key: string): Promise<void>;
   read(key: string): Promise<TSession | undefined>;
   write(key: string, value: TSession): Promise<void>;
@@ -12,12 +12,26 @@ interface SessionStorage<TSession> {
 class LocalSessionStorage<TSession> implements SessionStorage<TSession> {
   private readonly values = new Map<string, TSession>();
 
+  constructor(private readonly maxEntries = 10_000) {}
+
   read(key: string): Promise<TSession | undefined> {
     return Promise.resolve(this.values.get(key));
   }
 
   write(key: string, value: TSession): Promise<void> {
+    this.values.delete(key);
     this.values.set(key, value);
+
+    while (this.values.size > this.maxEntries) {
+      const oldestKey = this.values.keys().next().value;
+
+      if (typeof oldestKey !== "string") {
+        break;
+      }
+
+      this.values.delete(oldestKey);
+    }
+
     return Promise.resolve();
   }
 
@@ -27,14 +41,20 @@ class LocalSessionStorage<TSession> implements SessionStorage<TSession> {
   }
 }
 
-class ResilientBotSessionStorage implements SessionStorage<BotSession> {
+export class ResilientBotSessionStorage implements SessionStorage<BotSession> {
   private readonly local = new LocalSessionStorage<BotSession>();
 
   constructor(
-    private readonly redis: RedisSessionStorage<BotSession> | undefined,
+    private readonly redis: SessionStorage<BotSession> | undefined,
   ) {}
 
   async read(key: string): Promise<BotSession | undefined> {
+    const localValue = await this.local.read(key);
+
+    if (localValue !== undefined) {
+      return localValue;
+    }
+
     if (this.redis) {
       try {
         const value = await this.redis.read(key);
@@ -47,7 +67,7 @@ class ResilientBotSessionStorage implements SessionStorage<BotSession> {
       }
     }
 
-    return this.local.read(key);
+    return undefined;
   }
 
   async write(key: string, value: BotSession): Promise<void> {

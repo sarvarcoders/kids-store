@@ -26,13 +26,14 @@ import {
 } from "@/components/ui/status-state";
 
 const PRODUCTS_PER_PAGE = 12;
-const ProductGrid = dynamic(
-  () => import("./product-grid").then((module) => module.ProductGrid),
-  {
-    ssr: false,
-    loading: () => <LoadingState label="Mahsulotlar ko‘rsatilmoqda" />,
-  },
-);
+const loadProductGrid = () =>
+  import("./product-grid").then((module) => module.ProductGrid);
+const ProductGrid = dynamic(loadProductGrid, {
+  ssr: false,
+  loading: () => (
+    <LoadingState label="Mahsulotlar ko‘rsatilmoqda" />
+  ),
+});
 
 function compactProduct(
   product: ProductListResponse["data"][number],
@@ -99,6 +100,7 @@ export function CatalogPage(): ReactNode {
       return;
     }
 
+    void loadProductGrid();
     const controller = new AbortController();
 
     async function loadInitialData(): Promise<void> {
@@ -405,11 +407,17 @@ export function CatalogPage(): ReactNode {
             title="Hozircha chegirma yo‘q"
           />
         ) : (
-          <ProductGrid products={discountProducts} />
+          <ProductGrid
+            preloadFirstImage
+            products={discountProducts}
+          />
         )}
       </section>
 
-      <section aria-labelledby="all-products-title" className="mt-9">
+      <section
+        aria-labelledby="all-products-title"
+        className="catalog-deferred-section mt-9"
+      >
         <div className="mb-3 flex items-end justify-between gap-3 px-1">
           <div>
             <p className="eyebrow">Katalog</p>
