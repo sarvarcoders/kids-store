@@ -305,3 +305,13 @@ pnpm db:studio
 ```
 
 AI assistant va public website hozircha mavjud emas.
+
+## Telegram admin statistikasi
+
+`ADMIN_TELEGRAM_IDS` allowlistidagi do‘kon egalari botda `/stats` buyrug‘i
+orqali bugungi, oxirgi 7 kunlik va oxirgi 30 kunlik agregatlarni ko‘rishi
+mumkin. Hisobot buyurtmalar soni va qiymati, statuslar, sotilgan birliklar,
+yangi mijozlar, kanal postlari, top variantlar hamda kam qolgan yoki tugagan
+stockni ko‘rsatadi. Inline tugmalar davrni almashtiradi va hisobotni
+yangilaydi. Xabarda mijoz telefoni yoki manzili kabi shaxsiy ma’lumotlar
+chiqarilmaydi.

@@ -60,6 +60,12 @@ void test("admin keyboard Web App tugmasini to‘g‘ri yaratadi", () => {
         },
       },
     ],
+    [
+      {
+        callback_data: "admin_stats:today",
+        text: "📊 Statistika",
+      },
+    ],
   ]);
 });
 
