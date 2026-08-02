@@ -1,6 +1,7 @@
 import { autoRetry } from "@grammyjs/auto-retry";
 import { run, sequentialize } from "@grammyjs/runner";
 import { closeRedisProducers } from "@kids-store/core";
+import { prisma } from "@kids-store/database";
 import { Bot, session } from "grammy";
 
 import { env } from "./config/env.js";
@@ -61,6 +62,10 @@ let isStopping = false;
 let runnerHandle: ReturnType<typeof run> | undefined;
 let notificationWorker: ReturnType<typeof startBotNotificationWorker>;
 
+function isShutdownRequested(): boolean {
+  return isStopping;
+}
+
 async function stopBot(signal: NodeJS.Signals): Promise<void> {
   if (isStopping) {
     return;
@@ -69,46 +74,78 @@ async function stopBot(signal: NodeJS.Signals): Promise<void> {
   isStopping = true;
   logger.info("Bot to‘xtatilmoqda", { signal });
 
-  try {
-    await runnerHandle?.stop();
-    await notificationWorker?.close();
-    await closeRedisProducers();
+  const runnerResult = await Promise.allSettled([
+    runnerHandle?.stop() ?? Promise.resolve(),
+  ]);
+  const resourceNames = [
+    "notification_worker",
+    "redis_producers",
+    "prisma",
+  ] as const;
+  const resourceResults = await Promise.allSettled([
+    notificationWorker?.close() ?? Promise.resolve(),
+    closeRedisProducers(),
+    prisma.$disconnect(),
+  ]);
+  const failedResources = [
+    ...(runnerResult[0].status === "rejected" ? ["telegram_runner"] : []),
+    ...resourceResults.flatMap((result, index) =>
+      result.status === "rejected" ? [resourceNames[index]] : [],
+    ),
+  ];
+
+  if (failedResources.length === 0) {
     logger.info("Bot muvaffaqiyatli to‘xtatildi", { signal });
-  } catch (error) {
-    logger.error("Botni to‘xtatishda xato yuz berdi", error, { signal });
+    return;
   }
+
+  logger.error(
+    "Botning ayrim resurslarini yopib bo‘lmadi",
+    { name: "BotShutdownError" },
+    { failedResources, signal },
+  );
 }
 
-process.once("SIGINT", () => void stopBot("SIGINT"));
-process.once("SIGTERM", () => void stopBot("SIGTERM"));
+function registerShutdownSignal(signal: NodeJS.Signals): void {
+  process.once(signal, () => {
+    void stopBot(signal).finally(() => process.exit(0));
+  });
+}
+
+registerShutdownSignal("SIGINT");
+registerShutdownSignal("SIGTERM");
 
 try {
   await bot.init();
-  notificationWorker = startBotNotificationWorker();
-  logger.info("Telegram bot ishga tushdi", {
-    concurrency: BOT_RUNNER_CONCURRENCY,
-    username: bot.botInfo.username,
-  });
-  runnerHandle = run(bot, {
-    runner: {
-      fetch: {
-        allowed_updates: BOT_ALLOWED_UPDATES,
-      },
-      retryInterval: "exponential",
-    },
-    sink: {
+  if (isShutdownRequested()) {
+    logger.info("Bot ishga tushishi shutdown signali sabab bekor qilindi");
+  } else {
+    notificationWorker = startBotNotificationWorker();
+    logger.info("Telegram bot ishga tushdi", {
       concurrency: BOT_RUNNER_CONCURRENCY,
-      timeout: {
-        milliseconds: BOT_UPDATE_TIMEOUT_MS,
-        handler(update) {
-          logger.warn("Bot update belgilangan vaqtdan oshib ketdi", {
-            updateId: update.update_id,
-          });
+      username: bot.botInfo.username,
+    });
+    runnerHandle = run(bot, {
+      runner: {
+        fetch: {
+          allowed_updates: BOT_ALLOWED_UPDATES,
+        },
+        retryInterval: "exponential",
+      },
+      sink: {
+        concurrency: BOT_RUNNER_CONCURRENCY,
+        timeout: {
+          milliseconds: BOT_UPDATE_TIMEOUT_MS,
+          handler(update) {
+            logger.warn("Bot update belgilangan vaqtdan oshib ketdi", {
+              updateId: update.update_id,
+            });
+          },
         },
       },
-    },
-  });
-  await runnerHandle.task();
+    });
+    await runnerHandle.task();
+  }
 } catch (error) {
   logger.error("Telegram botni ishga tushirib bo‘lmadi", error);
   process.exitCode = 1;
