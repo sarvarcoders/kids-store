@@ -12,6 +12,7 @@ import { z } from "zod";
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
 import { databaseIdSchema } from "../config/validation.js";
+import { createAdminOrderKeyboard } from "../keyboards/admin-order.keyboard.js";
 import { createMainMenuKeyboard } from "../keyboards/main-menu.keyboard.js";
 import {
   CANCEL_ORDER_TEXT,
@@ -295,15 +296,35 @@ async function sendAdminNotification(
   ctx: BotContext,
   message: CreatedOrderMessageInput,
 ): Promise<void> {
-  try {
-    await ctx.api.sendMessage(
-      env.ADMIN_TELEGRAM_ID.toString(),
-      formatAdminOrderCreated(message),
+  const adminIds = Array.from(new Set(env.ADMIN_TELEGRAM_IDS));
+  const results = await Promise.allSettled(
+    adminIds.map((adminId) =>
+      ctx.api.sendMessage(adminId, formatAdminOrderCreated(message), {
+        reply_markup: createAdminOrderKeyboard({
+          id: message.orderId,
+          status: message.status,
+          contactedAt: null,
+          customer: {
+            telegramUserId: message.telegramUserId,
+            username: message.username ?? null,
+          },
+        }),
+      }),
+    ),
+  );
+  const failedCount = results.filter(
+    (result) => result.status === "rejected",
+  ).length;
+
+  if (failedCount > 0) {
+    logger.error(
+      "Yangi buyurtma ayrim adminlarga yuborilmadi",
+      { name: "AdminOrderNotificationError" },
+      {
+        failedCount,
+        orderId: message.orderId,
+      },
     );
-  } catch (error) {
-    logger.error("Yangi buyurtma adminiga xabar yuborilmadi", error, {
-      orderId: message.orderId,
-    });
   }
 }
 

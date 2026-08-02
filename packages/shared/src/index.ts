@@ -64,6 +64,13 @@ export {
   type OrderNotificationInput,
 } from "./order/order-notification.js";
 export {
+  canTransitionOrderStatus,
+  getAllowedOrderStatuses,
+  orderStatusSchema,
+  shouldRestoreStock,
+  type OrderStatus,
+} from "./order/order-status.js";
+export {
   authSessionResponseSchema,
   telegramWebAppUserSchema,
   verifiedTelegramUserDtoSchema,

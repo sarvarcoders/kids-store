@@ -56,7 +56,7 @@ export function formatOrderStatus(statusInput: unknown): string {
   const labels: Readonly<Record<string, string>> = {
     PENDING: "Kutilmoqda",
     CONFIRMED: "Tasdiqlangan",
-    PROCESSING: "Tayyorlanmoqda",
+    PROCESSING: "Tayyor",
     SHIPPED: "Yetkazilmoqda",
     DELIVERED: "Yetkazib berilgan",
     CANCELLED: "Bekor qilingan",

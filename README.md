@@ -315,3 +315,18 @@ yangi mijozlar, kanal postlari, top variantlar hamda kam qolgan yoki tugagan
 stockni ko‘rsatadi. Inline tugmalar davrni almashtiradi va hisobotni
 yangilaydi. Xabarda mijoz telefoni yoki manzili kabi shaxsiy ma’lumotlar
 chiqarilmaydi.
+
+## Telegram orqali zakazlarni boshqarish
+
+`ADMIN_TELEGRAM_IDS` allowlistidagi do‘kon egalari `/orders` yoki `/zakazlar`
+buyrug‘i, shuningdek `/admin` ichidagi `📦 Zakazlar` tugmasi orqali faol
+buyurtmalarni ko‘rishi mumkin. Har bir buyurtmada mijozga yozish, bog‘lanilganini
+belgilash, to‘lovni tasdiqlash, buyurtmani tayyor deb belgilash, dostavkaga
+yuborish va yetkazilganini yopish tugmalari mavjud.
+
+Statuslar `PENDING → CONFIRMED → PROCESSING → SHIPPED → DELIVERED` tartibida
+o‘zgaradi. Har bir amal `AdminAuditLog` jadvalida saqlanadi va status
+yangilanganda mijozga o‘zbek tilida avtomatik Telegram xabari yuboriladi.
+Bekor qilish ikki bosqichli tasdiqdan keyin bajariladi. Faol ro‘yxatda eng eski
+zakazlar birinchi ko‘rsatiladi; bir xil callback qayta bosilsa dublikat status
+yoki audit yozuvi yaratilmaydi.

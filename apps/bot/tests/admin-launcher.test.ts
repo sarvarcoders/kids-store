@@ -66,6 +66,12 @@ void test("admin keyboard Web App tugmasini to‘g‘ri yaratadi", () => {
         text: "📊 Statistika",
       },
     ],
+    [
+      {
+        callback_data: "admin_orders:list",
+        text: "📦 Zakazlar",
+      },
+    ],
   ]);
 });
 

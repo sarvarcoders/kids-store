@@ -172,7 +172,9 @@ const prismaAdminStatisticsRepository: AdminStatisticsRepository = {
       }),
       prisma.order.count({
         where: {
-          status: "PENDING",
+          status: {
+            in: ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED"],
+          },
         },
       }),
       prisma.product.count({

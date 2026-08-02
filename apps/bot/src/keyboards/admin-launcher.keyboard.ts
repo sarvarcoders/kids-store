@@ -1,6 +1,7 @@
 import { InlineKeyboard } from "grammy";
 
 import { adminAppUrlSchema } from "../config/admin-launcher.js";
+import { ADMIN_ORDERS_LIST_CALLBACK } from "../config/admin-order.js";
 import { createAdminStatisticsCallbackData } from "../config/admin-statistics.js";
 
 export function createAdminLauncherKeyboard(
@@ -14,5 +15,7 @@ export function createAdminLauncherKeyboard(
     .text(
       "📊 Statistika",
       createAdminStatisticsCallbackData("today"),
-    );
+    )
+    .row()
+    .text("📦 Zakazlar", ADMIN_ORDERS_LIST_CALLBACK);
 }

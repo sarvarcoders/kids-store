@@ -13,12 +13,14 @@ import {
   getBotSessionKey,
 } from "./config/performance.js";
 import { registerAdminHandler } from "./handlers/admin.handler.js";
+import { registerAdminOrderHandler } from "./handlers/admin-order.handler.js";
 import { registerAdminStatisticsHandler } from "./handlers/admin-statistics.handler.js";
 import { registerCallbackHandlers } from "./handlers/callback.handler.js";
 import { registerOrderHandlers } from "./handlers/order.handler.js";
 import { registerPublishHandler } from "./handlers/publish.handler.js";
 import { registerStartHandler } from "./handlers/start.handler.js";
 import { ChannelPostService } from "./services/channel-post.service.js";
+import { AdminOrderService } from "./services/admin-order.service.js";
 import { AdminStatisticsService } from "./services/admin-statistics.service.js";
 import { OrderService } from "./services/order.service.js";
 import { startBotNotificationWorker } from "./services/notification-worker.js";
@@ -48,6 +50,9 @@ bot.use(
 registerStartHandler(bot);
 registerAdminHandler(bot, {
   adminAppUrl: env.ADMIN_APP_URL,
+  allowedAdminIds: env.ADMIN_TELEGRAM_IDS,
+});
+registerAdminOrderHandler(bot, new AdminOrderService(), {
   allowedAdminIds: env.ADMIN_TELEGRAM_IDS,
 });
 registerAdminStatisticsHandler(bot, new AdminStatisticsService(), {
