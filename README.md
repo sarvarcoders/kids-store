@@ -150,6 +150,26 @@ ishlaydi. Bitta Telegram user update’lari session race condition bo‘lmasligi
 uchun ketma-ket bajariladi. Telegram 429, vaqtinchalik 5xx va network xatolari
 cheklangan auto-retry bilan boshqariladi.
 
+### Railway bot deploy
+
+Telegram bot Railway’da alohida persistent service sifatida ishlaydi. Service
+repository rootidan build qilinadi va Railway service sozlamasidagi Config File
+yo‘li `/railway.bot.json` bo‘lishi kerak. `pnpm install`ni build commandga
+qo‘shmang: Railpack workspace dependencylarini o‘zi o‘rnatadi.
+
+```bash
+pnpm --filter @kids-store/bot build
+pnpm --filter @kids-store/bot start
+```
+
+Bot `prebuild` lifecycle’i core paketini, core esa database va shared
+paketlarini build qiladi. Database `prebuild` jarayonida Prisma Client avtomatik
+generate qilinadi. Notification worker bot processining ichida ishga tushadi;
+`REDIS_URL` mavjud bo‘lsa queue, retry va dead-letter oqimini boshqaradi. Railway
+service replica sonini `1` qiling: grammY long polling uchun bir token bilan
+bitta faol poller ishlashi kerak. Deploy yoki restart paytida `SIGTERM` runner,
+worker queue’lari, Redis ulanishlari va Prisma Client’ni tartibli yopadi.
+
 Vercel serverless runtime uchun `DATABASE_URL` Supabase Supavisor transaction
 pooler manzili bo‘lishi kerak; migration va introspection uchun `DIRECT_URL`
 saqlanadi. Har process Prisma/pg pool limiti:
