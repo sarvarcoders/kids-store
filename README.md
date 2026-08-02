@@ -133,6 +133,12 @@ urinadi va oxirgi xatoni dead-letter queue’da saqlaydi. Redis sozlanmagan loka
 developmentda mavjud to‘g‘ridan-to‘g‘ri notification va in-memory fallback
 ishlashda davom etadi.
 
+Upstash TCP endpointi doim TLS bilan ishlaydi, shuning uchun connection string
+`rediss://` bilan boshlanishi kerak. Runtime eski `redis://*.upstash.io` qiymatini
+xavfsiz tarzda `rediss://`ga o‘tkazadi; yangi Railway environmentlarda esa
+Upstash Console ko‘rsatgan `rediss://` connection stringni to‘g‘ridan-to‘g‘ri
+kiriting.
+
 Product, category yoki stock o‘zgarganda katalog cache’i secure internal route
 orqali darhol invalidatsiya qilinadi. `CACHE_REVALIDATION_SECRET` Mini App,
 Admin va bot environmentlarida bir xil; `CATALOG_REVALIDATION_URL` esa Admin

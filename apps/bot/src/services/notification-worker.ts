@@ -7,7 +7,10 @@ import {
 
 import { env } from "../config/env.js";
 import { logger } from "../config/logger.js";
-import { botRedisConfig } from "../config/redis.js";
+import {
+  botRedisConfig,
+  logRedisWorkerError,
+} from "../config/redis.js";
 
 export interface BotNotificationWorkerHandle {
   close(): Promise<void>;
@@ -35,7 +38,7 @@ export function startBotNotificationWorker(): BotNotificationWorkerHandle | unde
       );
     },
     onError(error) {
-      logger.error("Notification queue worker xatosi", error);
+      logRedisWorkerError(error);
     },
   });
 

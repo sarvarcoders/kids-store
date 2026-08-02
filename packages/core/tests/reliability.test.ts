@@ -4,12 +4,52 @@ import test from "node:test";
 import { z } from "zod";
 
 import {
+  createRedisConnection,
   hasMatchingRevalidationSecret,
   notificationJobSchema,
+  parseRedisRuntimeConfig,
   RedisSessionStorage,
   ResilientIdempotencyStore,
   ResilientRateLimiter,
 } from "../src/index.js";
+
+void test("Upstash TCP URLni avtomatik TLS formatiga o‘tkazadi", () => {
+  const config = parseRedisRuntimeConfig({
+    REDIS_KEY_PREFIX: "test",
+    REDIS_URL:
+      "redis://default:test-password@test-database.upstash.io:6379",
+  });
+
+  assert.ok(config);
+  assert.equal(new URL(config.url).protocol, "rediss:");
+});
+
+void test("oddiy Redis hostining protokolini o‘zgartirmaydi", () => {
+  const config = parseRedisRuntimeConfig({
+    REDIS_KEY_PREFIX: "test",
+    REDIS_URL: "redis://localhost:6379",
+  });
+
+  assert.ok(config);
+  assert.equal(config.url, "redis://localhost:6379");
+});
+
+void test("Redis connection keep-alive va bounded reconnect ishlatadi", () => {
+  const client = createRedisConnection(
+    {
+      keyPrefix: "test",
+      url: "redis://localhost:6379",
+    },
+    "producer",
+  );
+  const retryStrategy = client.options.retryStrategy;
+
+  assert.equal(client.options.keepAlive, 30_000);
+  assert.equal(client.options.noDelay, true);
+  assert.equal(retryStrategy?.(1), 250);
+  assert.equal(retryStrategy?.(100), 5_000);
+  client.disconnect(false);
+});
 
 class FakeRedis {
   readonly values = new Map<string, string>();
