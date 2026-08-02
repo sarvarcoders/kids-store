@@ -1,7 +1,10 @@
 import { appendAdminAuditLog } from "@/lib/audit/audit.service";
 import { adminApiError, noStoreJson } from "@/lib/api/response";
 import { authenticateAdminRequest } from "@/lib/auth/request-auth";
-import { ADMIN_SESSION_COOKIE } from "@/lib/auth/session-core";
+import {
+  ADMIN_SESSION_COOKIE,
+  getAdminSessionCookiePolicy,
+} from "@/lib/auth/session-core";
 import { getAdminServerEnv } from "@/lib/env/server";
 
 export const dynamic = "force-dynamic";
@@ -30,13 +33,11 @@ export async function POST(request: Request): Promise<Response> {
     }
     const response = noStoreJson({ data: { loggedOut: true } });
 
+    const env = getAdminServerEnv();
     response.cookies.set({
       name: ADMIN_SESSION_COOKIE,
       value: "",
-      httpOnly: true,
-      secure: getAdminServerEnv().NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
+      ...getAdminSessionCookiePolicy(env.NODE_ENV),
       maxAge: 0,
     });
 

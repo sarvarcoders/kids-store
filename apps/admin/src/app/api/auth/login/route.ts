@@ -8,6 +8,7 @@ import {
 import {
   createAdminSessionToken,
   ADMIN_SESSION_COOKIE,
+  getAdminSessionCookiePolicy,
 } from "@/lib/auth/session-core";
 import { adminApiError, noStoreJson } from "@/lib/api/response";
 import { getAdminServerEnv } from "@/lib/env/server";
@@ -59,10 +60,7 @@ export async function POST(request: Request): Promise<Response> {
     response.cookies.set({
       name: ADMIN_SESSION_COOKIE,
       value: token,
-      httpOnly: true,
-      secure: env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
+      ...getAdminSessionCookiePolicy(env.NODE_ENV),
       maxAge: session.expiresAt - session.issuedAt,
     });
 

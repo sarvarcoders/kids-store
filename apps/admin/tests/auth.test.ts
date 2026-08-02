@@ -8,6 +8,7 @@ import {
 } from "../src/lib/auth/admin-login.js";
 import {
   createAdminSessionToken,
+  getAdminSessionCookiePolicy,
   isAdminAllowed,
   verifyAdminSessionToken,
   verifyCsrfToken,
@@ -122,4 +123,27 @@ void test("imzolangan session valid, buzilgan va expired session invalid", () =>
     true,
   );
   assert.equal(verifyCsrfToken(session.csrfToken, "x".repeat(32)), false);
+});
+
+void test("production session cookie Telegram Web iframe ichida ishlaydi", () => {
+  assert.deepEqual(getAdminSessionCookiePolicy("production"), {
+    httpOnly: true,
+    partitioned: true,
+    path: "/",
+    sameSite: "none",
+    secure: true,
+  });
+});
+
+void test("local session cookie HTTPS talab qilmaydi", () => {
+  assert.deepEqual(getAdminSessionCookiePolicy("development"), {
+    httpOnly: true,
+    path: "/",
+    sameSite: "lax",
+    secure: false,
+  });
+});
+
+void test("session cookie policy noma'lum environmentni rad etadi", () => {
+  assert.throws(() => getAdminSessionCookiePolicy("preview"));
 });

@@ -12,6 +12,43 @@ export const ADMIN_CSRF_HEADER = "x-admin-csrf-token";
 export const ADMIN_IDEMPOTENCY_HEADER = "x-idempotency-key";
 export const ADMIN_SESSION_TTL_SECONDS = 30 * 60;
 
+export interface AdminSessionCookiePolicy {
+  httpOnly: true;
+  partitioned?: true;
+  path: "/";
+  sameSite: "lax" | "none";
+  secure: boolean;
+}
+
+const nodeEnvironmentSchema = z.enum([
+  "development",
+  "test",
+  "production",
+]);
+
+export function getAdminSessionCookiePolicy(
+  environmentInput: unknown,
+): AdminSessionCookiePolicy {
+  const environment = nodeEnvironmentSchema.parse(environmentInput);
+
+  if (environment === "production") {
+    return {
+      httpOnly: true,
+      partitioned: true,
+      path: "/",
+      sameSite: "none",
+      secure: true,
+    };
+  }
+
+  return {
+    httpOnly: true,
+    path: "/",
+    sameSite: "lax",
+    secure: false,
+  };
+}
+
 const adminSessionPayloadSchema = z.object({
   adminTelegramId: z.string().regex(/^[1-9]\d*$/),
   csrfToken: z.string().min(32).max(128),
