@@ -14,6 +14,9 @@ const adminTelegramIdSchema = z
   .transform((value) => String(value))
   .pipe(z.string().regex(/^[1-9]\d*$/));
 const listLimitSchema = z.number().int().min(1).max(10);
+const ADMIN_ORDER_TRANSACTION_MAX_WAIT_MS = 5_000;
+const ADMIN_ORDER_TRANSACTION_TIMEOUT_MS = 10_000;
+const ADMIN_ORDER_TRANSACTION_RETRY_DELAYS_MS = [250, 750] as const;
 export const adminManagedOrderSchema = z.object({
   id: databaseIdSchema,
   status: orderStatusSchema,
@@ -140,6 +143,63 @@ function isPrismaTransactionConflict(error: unknown): boolean {
   );
 }
 
+function getErrorCode(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return undefined;
+  }
+
+  return typeof error.code === "string" ? error.code : undefined;
+}
+
+export function isRetryableAdminOrderTransactionError(
+  error: unknown,
+): boolean {
+  const code = getErrorCode(error);
+
+  if (code === "P2028" || code === "P2034") {
+    return true;
+  }
+
+  return (
+    error instanceof Error &&
+    error.message.includes(
+      "Unable to start a transaction in the given time",
+    )
+  );
+}
+
+function waitForRetry(delayMs: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+export async function runAdminOrderTransactionWithRetry<T>(
+  operation: () => Promise<T>,
+  wait: (delayMs: number) => Promise<void> = waitForRetry,
+): Promise<T> {
+  for (
+    let attempt = 0;
+    attempt <= ADMIN_ORDER_TRANSACTION_RETRY_DELAYS_MS.length;
+    attempt += 1
+  ) {
+    try {
+      return await operation();
+    } catch (error) {
+      const retryDelay = ADMIN_ORDER_TRANSACTION_RETRY_DELAYS_MS[attempt];
+
+      if (
+        retryDelay === undefined ||
+        !isRetryableAdminOrderTransactionError(error)
+      ) {
+        throw error;
+      }
+
+      await wait(retryDelay);
+    }
+  }
+
+  throw new Error("Admin order transaction retry chegarasi buzildi");
+}
+
 const prismaAdminOrderRepository: AdminOrderRepository = {
   async findById(orderIdInput) {
     const { prisma } = await import("@kids-store/database");
@@ -224,8 +284,9 @@ const prismaAdminOrderRepository: AdminOrderRepository = {
     );
     const orderId = databaseIdSchema.parse(orderIdInput);
 
-    return prisma.$transaction(
-      async (transaction) => {
+    return runAdminOrderTransactionWithRetry(() =>
+      prisma.$transaction(
+        async (transaction) => {
         const order = await transaction.order.findUnique({
           where: { id: orderId },
           select: { id: true },
@@ -264,8 +325,13 @@ const prismaAdminOrderRepository: AdminOrderRepository = {
         });
 
         return { wasDuplicate: false };
-      },
-      { isolationLevel: "Serializable" },
+        },
+        {
+          isolationLevel: "Serializable",
+          maxWait: ADMIN_ORDER_TRANSACTION_MAX_WAIT_MS,
+          timeout: ADMIN_ORDER_TRANSACTION_TIMEOUT_MS,
+        },
+      ),
     ).catch((error: unknown) => {
       if (isPrismaTransactionConflict(error)) {
         throw new AdminOrderServiceError(
@@ -290,8 +356,9 @@ const prismaAdminOrderRepository: AdminOrderRepository = {
     const orderId = databaseIdSchema.parse(orderIdInput);
     const nextStatus = orderStatusSchema.parse(nextStatusInput);
 
-    return prisma.$transaction(
-      async (transaction) => {
+    return runAdminOrderTransactionWithRetry(() =>
+      prisma.$transaction(
+        async (transaction) => {
         const current = await transaction.order.findUnique({
           where: { id: orderId },
           select: {
@@ -382,8 +449,13 @@ const prismaAdminOrderRepository: AdminOrderRepository = {
           customerTelegramUserId: current.customer.telegramUserId,
           wasDuplicate: false,
         };
-      },
-      { isolationLevel: "Serializable" },
+        },
+        {
+          isolationLevel: "Serializable",
+          maxWait: ADMIN_ORDER_TRANSACTION_MAX_WAIT_MS,
+          timeout: ADMIN_ORDER_TRANSACTION_TIMEOUT_MS,
+        },
+      ),
     ).catch((error: unknown) => {
       if (isPrismaTransactionConflict(error)) {
         throw new AdminOrderServiceError(

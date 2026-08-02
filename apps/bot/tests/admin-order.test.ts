@@ -21,6 +21,8 @@ import {
 import {
   AdminOrderService,
   AdminOrderServiceError,
+  isRetryableAdminOrderTransactionError,
+  runAdminOrderTransactionWithRetry,
   type AdminManagedOrder,
   type AdminOpenOrderList,
   type AdminOrderRepository,
@@ -289,4 +291,59 @@ void test("parallel status update yakunlangan bo‘lsa idempotent natija qaytara
   assert.equal(result.wasDuplicate, true);
   assert.equal(result.order.status, "CONFIRMED");
   assert.equal(repository.transitionWrites, 1);
+});
+
+void test("transaction pool vaqtincha band bo‘lsa bounded retry qiladi", async () => {
+  let attempts = 0;
+  const delays: number[] = [];
+  const result = await runAdminOrderTransactionWithRetry(
+    () => {
+      attempts += 1;
+
+      if (attempts < 3) {
+        return Promise.reject(
+          Object.assign(
+            new Error(
+              "Transaction API error: Unable to start a transaction in the given time.",
+            ),
+            { code: "P2028" },
+          ),
+        );
+      }
+
+      return Promise.resolve("ok");
+    },
+    (delayMs) => {
+      delays.push(delayMs);
+      return Promise.resolve();
+    },
+  );
+
+  assert.equal(result, "ok");
+  assert.equal(attempts, 3);
+  assert.deepEqual(delays, [250, 750]);
+});
+
+void test("doimiy transaction xatosini retry qilmaydi", async () => {
+  let attempts = 0;
+
+  await assert.rejects(() =>
+    runAdminOrderTransactionWithRetry(
+      () => {
+        attempts += 1;
+        return Promise.reject(new Error("permission denied"));
+      },
+      () => Promise.resolve(),
+    ),
+  );
+
+  assert.equal(attempts, 1);
+  assert.equal(
+    isRetryableAdminOrderTransactionError({ code: "P2034" }),
+    true,
+  );
+  assert.equal(
+    isRetryableAdminOrderTransactionError(new Error("permission denied")),
+    false,
+  );
 });
