@@ -61,15 +61,15 @@ const seedData = seedDataSchema.parse({
     },
     {
       name: "Qiz bolalar kiyimi",
-      slug: "girls-clothing",
+      slug: "qiz-bolalar-kiyimi",
     },
     {
       name: "Bolalar oyoq kiyimi",
-      slug: "kids-footwear",
+      slug: "bolalar-oyoq-kiyimi",
     },
     {
       name: "Sumka va aksessuarlar",
-      slug: "bags-accessories",
+      slug: "sumka-va-aksessuarlar",
     },
   ],
   product: {
